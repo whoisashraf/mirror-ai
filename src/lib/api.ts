@@ -30,6 +30,7 @@ async function invokeShopperFunction<T>(name: string, body: Record<string, unkno
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${supabasePublishableKey}`,
       apikey: supabasePublishableKey,
       'x-mirror-session-token': token,
     },
@@ -186,7 +187,12 @@ export async function trackEvent(eventType: string, payload: Record<string, unkn
   const incomingMetadata = ((payload.metadata as Record<string, unknown> | undefined) || {})
   const metadata: Record<string, unknown> = { ...incomingMetadata }
   if (eventType === 'chat_message_sent' && !metadata.intent) metadata.intent = detectIntent(String(metadata.message || ''))
-  await invokeShopperFunction('track-event', { eventType, ...payload, metadata })
+  try {
+    await invokeShopperFunction('track-event', { eventType, ...payload, metadata })
+  } catch (error) {
+    // Analytics must never prevent the storefront from loading or completing an action.
+    console.warn('[Mirror analytics] Event tracking failed.', error)
+  }
 }
 
 export async function saveProduct(merchantId: string, input: Partial<Product> & { name: string; price: number; category: string; primary_image_url: string; product_url: string }, id?: string): Promise<Product> {
