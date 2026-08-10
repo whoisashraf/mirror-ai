@@ -26,6 +26,14 @@ alter table public.shopper_images alter column shopper_session_id set not null;
 alter table public.try_on_generations alter column shopper_session_id set not null;
 alter table public.conversations alter column shopper_session_id set not null;
 
+-- Remove policies that depend on the legacy Auth user columns before dropping them.
+drop policy if exists "shoppers manage own profile" on public.shopper_profiles;
+drop policy if exists "shoppers manage own image rows" on public.shopper_images;
+drop policy if exists "shopper or merchant reads generation" on public.try_on_generations;
+drop policy if exists "shopper or merchant reads generation products" on public.try_on_products;
+drop policy if exists "shopper or merchant reads conversations" on public.conversations;
+drop policy if exists "conversation participants read messages" on public.messages;
+
 alter table public.shopper_images drop column if exists user_id;
 alter table public.try_on_generations drop column if exists shopper_user_id;
 alter table public.conversations drop column if exists shopper_user_id;
@@ -35,13 +43,6 @@ create index if not exists shopper_images_session_idx on public.shopper_images(s
 create index if not exists generations_session_idx on public.try_on_generations(shopper_session_id, created_at desc);
 create index if not exists conversations_session_idx on public.conversations(shopper_session_id, created_at desc);
 create index if not exists analytics_events_session_idx on public.analytics_events(shopper_session_id, created_at desc);
-
-drop policy if exists "shoppers manage own profile" on public.shopper_profiles;
-drop policy if exists "shoppers manage own image rows" on public.shopper_images;
-drop policy if exists "shopper or merchant reads generation" on public.try_on_generations;
-drop policy if exists "shopper or merchant reads generation products" on public.try_on_products;
-drop policy if exists "shopper or merchant reads conversations" on public.conversations;
-drop policy if exists "conversation participants read messages" on public.messages;
 
 comment on table public.shopper_sessions is 'Guest shopper sessions managed by Edge Functions; no shopper Supabase Auth required.';
 
