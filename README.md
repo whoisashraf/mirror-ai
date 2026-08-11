@@ -2,7 +2,7 @@
 
 Mirror AI is a mobile-first white-label fashion try-on and styling assistant for merchant storefronts.
 
-This build is **demo-ready** and includes:
+This build uses the hosted Supabase and OpenRouter services and includes:
 
 - merchant-isolated storefronts / white-label theming
 - persistent fitting-room layout
@@ -12,7 +12,6 @@ This build is **demo-ready** and includes:
 - chained generations for complete looks
 - shoes / accessories fidelity handling
 - merchant analytics funnel
-- demo mode fallback and reset tools
 - **guest shopper sessions (no Supabase anonymous sign-ins)**
 - **OpenRouter-only AI backend**
 
@@ -41,12 +40,7 @@ Copy `.env.example` to `.env` and set:
 ```env
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_PUBLISHABLE_KEY=<local publishable or anon-compatible key>
-VITE_DEMO_MODE=true
 ```
-
-Use `VITE_DEMO_MODE=true` for the scripted fallback demo.
-
-Set `VITE_DEMO_MODE=false` when your local Supabase + Edge Functions are running and configured.
 
 > Shopper sessions are **not** implemented with Supabase anonymous auth.
 > Shoppers use server-managed guest session tokens stored in browser local storage.
@@ -197,24 +191,6 @@ Dashboard:
 
 ---
 
-## Demo mode
-
-If `VITE_DEMO_MODE=true`, the app uses:
-
-- seeded storefront/catalogue
-- deterministic fallback look previews
-- local event storage
-- demo model photo
-- reset controls
-
-This is useful when:
-
-- OpenRouter is unavailable
-- you want a rehearsed pitch flow
-- you want to avoid burning image credits while polishing UX
-
----
-
 ## Supabase notes
 
 This repo now expects:
@@ -236,7 +212,7 @@ This repo now expects:
 6. create `.env`
 7. `npm run dev`
 8. open a demo storefront
-9. upload / use demo photo
+9. upload a shopper photo
 10. generate look → chat → add recommended products → shop look
 
 ---
@@ -248,7 +224,6 @@ For hosted environments:
 ```env
 VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
-VITE_DEMO_MODE=false
 ```
 
 Do **not** put `OPENROUTER_API_KEY` in the Vue app.

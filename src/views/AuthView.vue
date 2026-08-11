@@ -1,9 +1,81 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { demoMode, supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import AppButton from '@/components/ui/AppButton.vue'
-const router=useRouter(); const email=ref(''),password=ref(''),error=ref(''),loading=ref(false)
-async function login(){ if(demoMode){router.push('/dashboard');return} loading.value=true; error.value=''; const {error:e}=await supabase!.auth.signInWithPassword({email:email.value,password:password.value}); loading.value=false; if(e)error.value=e.message;else router.push('/dashboard') }
+
+const router = useRouter()
+const email = ref('')
+const password = ref('')
+const error = ref('')
+const notice = ref('')
+const loading = ref(false)
+const creatingAccount = ref(false)
+
+async function claimMerchantAndContinue() {
+  const { error: claimError } = await supabase.rpc('claim_mirror_atelier')
+  if (claimError) throw claimError
+  await router.push('/dashboard')
+}
+
+async function submit() {
+  loading.value = true
+  error.value = ''
+  notice.value = ''
+
+  try {
+    if (creatingAccount.value) {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.value.trim(),
+        password: password.value,
+        options: { emailRedirectTo: `${window.location.origin}/auth` },
+      })
+      if (signUpError) throw signUpError
+      if (!data.session) {
+        notice.value = 'Check your email to confirm the account, then return here to sign in.'
+        creatingAccount.value = false
+        return
+      }
+      await claimMerchantAndContinue()
+      return
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.value.trim(),
+      password: password.value,
+    })
+    if (signInError) throw signInError
+    await claimMerchantAndContinue()
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : 'Authentication failed.'
+  } finally {
+    loading.value = false
+  }
+}
 </script>
-<template><main class="grid min-h-screen place-items-center bg-paper px-5"><form class="w-full max-w-md rounded-[1.6rem] border border-line bg-white p-6" @submit.prevent="login"><p class="text-xs font-semibold uppercase tracking-[.2em] text-muted">Merchant access</p><h1 class="mt-2 text-3xl font-semibold tracking-tight">Sign in to Mirror</h1><p class="mt-2 text-sm text-muted">Demo mode accepts any credentials.</p><label class="mt-7 block text-xs font-medium">Email<input v-model="email" type="email" required class="mt-2 min-h-12 w-full rounded-xl border border-line px-3 outline-none focus:border-ink" placeholder="you@store.com"/></label><label class="mt-4 block text-xs font-medium">Password<input v-model="password" type="password" required class="mt-2 min-h-12 w-full rounded-xl border border-line px-3 outline-none focus:border-ink" placeholder="••••••••"/></label><p v-if="error" class="mt-3 text-xs text-red-700">{{ error }}</p><AppButton class="mt-5 w-full" type="submit" :disabled="loading">{{loading?'Signing in…':'Sign in'}}</AppButton></form></main></template>
+
+<template>
+  <main class="grid min-h-screen place-items-center bg-paper px-5">
+    <form class="w-full max-w-md rounded-[1.6rem] border border-line bg-white p-6" @submit.prevent="submit">
+      <p class="text-xs font-semibold uppercase tracking-[.2em] text-muted">Merchant access</p>
+      <h1 class="mt-2 text-3xl font-semibold tracking-tight">{{ creatingAccount ? 'Create your account' : 'Sign in to Mirror' }}</h1>
+      <p class="mt-2 text-sm leading-6 text-muted">
+        {{ creatingAccount ? 'Create the first merchant account for Mirror Atelier.' : 'Use your merchant email and password.' }}
+      </p>
+      <label class="mt-7 block text-xs font-medium">Email
+        <input v-model="email" type="email" autocomplete="email" required class="mt-2 min-h-12 w-full rounded-xl border border-line px-3 outline-none focus:border-ink" placeholder="you@store.com" />
+      </label>
+      <label class="mt-4 block text-xs font-medium">Password
+        <input v-model="password" type="password" :autocomplete="creatingAccount ? 'new-password' : 'current-password'" minlength="8" required class="mt-2 min-h-12 w-full rounded-xl border border-line px-3 outline-none focus:border-ink" placeholder="At least 8 characters" />
+      </label>
+      <p v-if="error" class="mt-3 text-xs leading-5 text-red-700">{{ error }}</p>
+      <p v-if="notice" class="mt-3 text-xs leading-5 text-green-700">{{ notice }}</p>
+      <AppButton class="mt-5 w-full" type="submit" :disabled="loading">
+        {{ loading ? 'Please wait…' : creatingAccount ? 'Create account' : 'Sign in' }}
+      </AppButton>
+      <button type="button" class="mt-4 w-full text-center text-xs font-semibold underline" @click="creatingAccount=!creatingAccount;error='';notice=''">
+        {{ creatingAccount ? 'Already have an account? Sign in' : 'No account yet? Create one' }}
+      </button>
+    </form>
+  </main>
+</template>

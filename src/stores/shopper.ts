@@ -64,7 +64,6 @@ export const useShopperStore = defineStore('shopper', {
     consentAt: '' as string,
     uploading: false,
     photoAssessment: null as PhotoAssessment | null,
-    usingDemoPhoto: false,
   }),
   actions: {
     ensureSession() {
@@ -81,27 +80,7 @@ export const useShopperStore = defineStore('shopper', {
         this.imageId = result.id
         this.imageUrl = result.url
         this.imageStoragePath = result.storagePath
-        this.usingDemoPhoto = false
       } finally { this.uploading = false }
-    },
-    useDemoPhoto(category?: TryOnCategory) {
-      this.ensureSession()
-      this.imageId = `demo-${crypto.randomUUID()}`
-      this.imageUrl = '/demo-shopper.svg'
-      this.imageStoragePath = 'demo/local'
-      this.consentAt = new Date().toISOString()
-      this.usingDemoPhoto = true
-      const needsFullBody = ['shoes', 'bottom', 'dress'].includes(category || '')
-      this.photoAssessment = {
-        ready: true,
-        score: 100,
-        width: 900,
-        height: 1400,
-        checks: [
-          { label: 'Resolution', status: 'pass', detail: 'Demo photo is prepared for the fitting-room flow.' },
-          { label: 'Framing', status: 'pass', detail: needsFullBody ? 'Full body and footwear area are visible.' : 'Garment area is clearly visible.' },
-        ],
-      }
     },
     async clearPhoto(merchantId?: string) {
       const oldUrl = this.imageUrl, oldId = this.imageId, oldPath = this.imageStoragePath
@@ -109,7 +88,6 @@ export const useShopperStore = defineStore('shopper', {
       if (oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl)
       this.imageId = ''; this.imageUrl = ''; this.imageStoragePath = ''; this.consentAt = ''
       this.photoAssessment = null
-      this.usingDemoPhoto = false
     },
     resetLocal() {
       if (this.imageUrl.startsWith('blob:')) URL.revokeObjectURL(this.imageUrl)

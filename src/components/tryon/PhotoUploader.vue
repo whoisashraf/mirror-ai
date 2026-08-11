@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { useShopperStore } from '@/stores/shopper'
 import { trackEvent } from '@/lib/api'
-import { demoMode } from '@/lib/supabase'
 import AppButton from '@/components/ui/AppButton.vue'
 import type { TryOnCategory } from '@/types'
 
@@ -30,12 +29,6 @@ async function handleFile(file?: File) {
   if (props.merchantId) await trackEvent('photo_uploaded', { merchantId:props.merchantId, sessionId:shopper.sessionId, productId:props.productId, metadata:{ tryOnCategory:props.tryOnCategory, assessment:shopper.photoAssessment } })
 }
 
-async function useDemo() {
-  error.value = ''
-  if (!consent.value) { error.value = 'Please confirm consent first.'; return }
-  shopper.useDemoPhoto(props.tryOnCategory)
-  if (props.merchantId) await trackEvent('photo_uploaded', { merchantId:props.merchantId, sessionId:shopper.sessionId, productId:props.productId, metadata:{ tryOnCategory:props.tryOnCategory, demoPhoto:true } })
-}
 </script>
 <template>
   <section class="rounded-[1.5rem] border border-line bg-white p-4 sm:p-5">
@@ -59,7 +52,6 @@ async function useDemo() {
       <p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">{{ photoGuidance }}</p>
       <div class="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row">
         <AppButton :disabled="!consent || shopper.uploading" @click="input?.click()">{{ shopper.uploading ? 'Uploading…' : 'Choose photo' }}</AppButton>
-        <AppButton v-if="demoMode" variant="outline" :disabled="!consent" @click="useDemo">Use demo model</AppButton>
       </div>
       <p v-if="!consent" class="mt-2 text-xs text-muted">Confirm consent below to enable upload.</p>
     </div>
