@@ -33,6 +33,10 @@ const result = computed(() => tryOn.current?.output_image_url || shopper.imageUr
 const assistantName = computed(() => merchant.value?.storefront_config?.assistantName || 'Mirror')
 const currentProductIds = computed(() => tryOn.current?.productIds || (product.value ? [product.value.id] : []))
 const history = computed(() => tryOn.history)
+const fidelityPercent = computed(() => {
+  const score = Number(tryOn.current?.fidelity_report?.overall || 0)
+  return Math.min(100, Math.round(score <= 1 ? score * 100 : score))
+})
 const exclusiveCategories = new Set<TryOnCategory>(['top','outerwear','dress','bottom','shoes','bag','headwear','earrings','necklace'])
 let loadToken = 0
 
@@ -147,16 +151,16 @@ async function buyProduct(item: Product) {
       <div class="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6"><button class="focus-ring min-h-11 rounded-full px-2 text-sm font-medium" @click="router.back()">← Back</button><span class="font-semibold">{{ merchant?.name || 'Store' }}</span><span class="text-xs opacity-55">{{ assistantName }}</span></div>
     </header>
 
-    <div class="mx-auto grid h-[calc(100dvh-4rem)] max-w-7xl grid-rows-[42dvh_minmax(0,1fr)] gap-3 overflow-hidden px-3 py-3 sm:px-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(380px,.95fr)] lg:grid-rows-1 lg:gap-5 lg:px-6 lg:py-5">
+    <div class="mx-auto grid h-[calc(100dvh-4rem)] max-w-[1440px] grid-rows-[42dvh_minmax(0,1fr)] gap-3 overflow-hidden px-3 py-3 sm:px-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(420px,.85fr)] lg:grid-rows-1 lg:gap-5 lg:px-6 lg:py-5">
       <section class="min-h-0">
         <div class="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-line bg-white">
-          <div class="flex min-h-12 shrink-0 items-center justify-between border-b border-line px-3 sm:px-4">
-            <div><p class="text-[9px] font-semibold uppercase tracking-[.18em] text-muted">Live fitting room</p><p class="mt-0.5 max-w-44 truncate text-xs font-semibold sm:max-w-sm">{{ lookProducts.map((p)=>p.name).join(' + ') || product?.name || 'Your outfit' }}</p></div>
-            <div class="flex items-center gap-1">
-              <button class="focus-ring min-h-10 rounded-full px-3 text-[10px] font-semibold hover:bg-paper" @click="showSaved=true">Saved <span v-if="savedLooks.length">({{ savedLooks.length }})</span></button>
-              <button v-if="status==='completed'" class="focus-ring min-h-10 rounded-full px-3 text-[10px] font-semibold hover:bg-paper" @click="saveLook">{{ saved?'Saved ✓':'Save' }}</button>
-              <button v-if="status==='completed'" class="focus-ring min-h-10 rounded-full px-3 text-[10px] font-semibold hover:bg-paper" :disabled="busy" @click="regenerate">Regenerate</button>
-              <button v-if="status==='completed' && lookProducts.length" class="focus-ring min-h-10 rounded-full bg-[var(--store-accent)] px-3 text-[10px] font-semibold text-white" @click="showShop=true">Shop look</button>
+          <div class="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-line px-3 sm:px-4">
+            <div class="min-w-0"><p class="text-[9px] font-semibold uppercase tracking-[.18em] text-muted">Live fitting room</p><p class="mt-0.5 max-w-52 truncate text-xs font-semibold xl:max-w-xs">{{ lookProducts.map((p)=>p.name).join(' + ') || product?.name || 'Your outfit' }}</p></div>
+            <div class="flex shrink-0 items-center gap-1 whitespace-nowrap">
+              <button class="focus-ring min-h-9 rounded-full px-2.5 text-[10px] font-semibold hover:bg-paper" @click="showSaved=true">My looks<span v-if="savedLooks.length"> · {{ savedLooks.length }}</span></button>
+              <button v-if="status==='completed'" class="focus-ring min-h-9 rounded-full px-2.5 text-[10px] font-semibold hover:bg-paper" @click="saveLook">{{ saved?'Saved ✓':'Save' }}</button>
+              <button v-if="status==='completed'" class="focus-ring min-h-9 rounded-full px-2.5 text-[10px] font-semibold hover:bg-paper" :disabled="busy" @click="regenerate">Retry</button>
+              <button v-if="status==='completed' && lookProducts.length" class="focus-ring min-h-9 rounded-full bg-[var(--store-accent)] px-3 text-[10px] font-semibold text-white" @click="showShop=true">Shop</button>
             </div>
           </div>
 
@@ -168,7 +172,7 @@ async function buyProduct(item: Product) {
 
             <div v-if="status==='completed'" class="absolute left-2 top-2 flex flex-wrap gap-1.5">
               <span class="rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-semibold shadow-sm">{{ tryOn.current?.provider==='demo-fallback' ? 'Demo fallback preview' : 'AI visual preview' }}</span>
-              <span v-if="tryOn.current?.fidelity_report" class="rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-semibold shadow-sm">Fidelity {{ Math.round((tryOn.current.fidelity_report.overall || 0) * 100) }}%</span>
+              <span v-if="tryOn.current?.fidelity_report" class="rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-semibold shadow-sm">Fidelity {{ fidelityPercent }}%</span>
             </div>
 
             <div v-if="history.length > 1 && status==='completed'" class="absolute bottom-2 left-2 right-2 flex items-center gap-2 rounded-[1rem] bg-white/92 p-2 shadow-sm backdrop-blur">

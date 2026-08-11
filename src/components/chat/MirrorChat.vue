@@ -28,6 +28,11 @@ const scroller = ref<HTMLElement | null>(null)
 const name = computed(() => props.assistantName || 'Mirror')
 const prompts = ['Does this colour suit me?', 'Is this interview appropriate?', 'What can I pair with this?', 'Make this more casual.', 'Build a complete outfit around this.']
 const latestRecommendations = computed(() => [...chat.messages].reverse().find((m) => m.role === 'assistant' && m.recommendations?.length)?.recommendations ?? [])
+const visibleMessages = computed(() => chat.messages.filter((message, index, messages) => {
+  const previous = messages[index - 1]
+  return !previous || previous.role !== message.role || previous.content !== message.content
+}))
+const latestRecommendationMessageId = computed(() => [...visibleMessages.value].reverse().find((message) => message.role === 'assistant' && message.recommendations?.length)?.id)
 
 async function scrollToEnd() {
   await nextTick()
@@ -35,6 +40,7 @@ async function scrollToEnd() {
 }
 
 async function send(text?: string) {
+  if (chat.sending) return
   const message = (text ?? input.value).trim()
   if (!message) return
   input.value = ''
@@ -75,14 +81,14 @@ function actionLabel(action: string | MirrorAction) {
 </script>
 <template>
   <section class="flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-line bg-white h-full">
-    <div class="shrink-0 border-b border-line p-4">
+    <div class="shrink-0 border-b border-line px-4 py-3">
       <div class="flex items-center gap-3"><div class="grid h-9 w-9 place-items-center rounded-full bg-[var(--store-accent)] text-xs font-bold text-white">{{ name.slice(0,1).toUpperCase() }}</div><div><h2 class="text-sm font-semibold">{{ name }}</h2><p class="text-xs text-muted">Styling advice from this store’s catalogue</p></div></div>
     </div>
     <div ref="scroller" class="min-h-52 flex-1 space-y-4 overflow-y-auto p-4">
       <div v-if="!chat.messages.length"><p class="text-sm leading-6 text-muted">Ask about colour, occasion, styling, modest options or a budget. Your current generated look stays visible while the conversation changes it.</p><div class="mt-4 flex flex-wrap gap-2"><button v-for="p in prompts" :key="p" class="focus-ring rounded-full border border-line px-3 py-2 text-left text-xs hover:border-ink" @click="send(p)">{{ p }}</button></div></div>
-      <template v-for="message in chat.messages" :key="message.id">
-        <div :class="message.role === 'user' ? 'ml-auto bg-ink text-white' : 'mr-auto bg-paper text-ink'" class="max-w-[88%] rounded-[1.2rem] px-4 py-3 text-sm leading-6">{{ message.content }}</div>
-        <div v-if="message.recommendations?.length" class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 hide-scrollbar">
+      <template v-for="message in visibleMessages" :key="message.id">
+        <div :class="message.role === 'user' ? 'ml-auto bg-ink text-white' : 'mr-auto bg-paper text-ink'" class="max-w-[78%] rounded-[1.2rem] px-4 py-2.5 text-sm leading-6">{{ message.content }}</div>
+        <div v-if="message.id===latestRecommendationMessageId && message.recommendations?.length" class="grid gap-2 pb-1">
           <RecommendationCard
             v-for="rec in message.recommendations"
             :key="rec.productId"
