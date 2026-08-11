@@ -3,7 +3,6 @@ import { computed, nextTick, ref } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useShopperStore } from '@/stores/shopper'
 import RecommendationCard from './RecommendationCard.vue'
-import AppButton from '@/components/ui/AppButton.vue'
 import type { MirrorAction } from '@/types'
 
 const props = defineProps<{
@@ -96,14 +95,13 @@ function actionLabel(action: string | MirrorAction) {
             @add="emit('addToLook', $event)"
           />
         </div>
-        <div v-if="message.role==='assistant' && message.suggestedActions?.length" class="flex flex-wrap gap-2">
+        <div v-if="message.role==='assistant' && !message.recommendations?.length && message.suggestedActions?.length" class="flex flex-wrap gap-2">
           <button v-for="(action,index) in message.suggestedActions" :key="`${message.id}-${index}`" class="focus-ring min-h-10 rounded-full border border-[var(--store-accent)] px-3 text-[11px] font-semibold text-[var(--store-accent)]" @click="executeAction(action)">{{ actionLabel(action) }}</button>
         </div>
       </template>
       <div v-if="chat.sending" class="w-fit rounded-full bg-paper px-4 py-2 text-xs text-muted">{{ name }} is thinking…</div>
       <p v-if="chat.error" role="alert" class="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{{ chat.error }}</p>
     </div>
-    <div v-if="latestRecommendations.length" class="shrink-0 border-t border-line px-4 pt-3"><AppButton class="w-full" @click="completeLook">Try recommended products on this look</AppButton></div>
     <form class="flex shrink-0 gap-2 p-4" @submit.prevent="send()"><input v-model="input" class="focus-ring min-h-12 flex-1 rounded-full border border-line bg-paper px-4 text-sm outline-none" :placeholder="`Ask ${name} about this look…`" /><button class="focus-ring grid h-12 w-12 place-items-center rounded-full bg-[var(--store-accent)] text-white disabled:opacity-40" :disabled="chat.sending || !input.trim()">↑</button></form>
   </section>
 </template>

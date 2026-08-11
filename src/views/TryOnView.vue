@@ -11,7 +11,7 @@ import { activateTenantScope, applyStorefrontTheme, customTenantHost, storefront
 import { useShopperStore } from '@/stores/shopper'
 import { useTryOnStore } from '@/stores/tryOn'
 import { useChatStore } from '@/stores/chat'
-import { isLookSaved, saveLook as persistLook } from '@/lib/savedLooks'
+import { isLookSaved, loadSavedLooks, removeSavedLook, saveLook as persistLook, type SavedLook } from '@/lib/savedLooks'
 import type { Merchant, Product, TryOnCategory } from '@/types'
 
 const route = useRoute()
@@ -25,6 +25,8 @@ const lookProducts = ref<Product[]>([])
 const error = ref('')
 const saved = ref(false)
 const showShop = ref(false)
+const showSaved = ref(false)
+const savedLooks = ref<SavedLook[]>([])
 const status = computed(() => tryOn.current?.status ?? 'idle')
 const busy = computed(() => ['preparing','generating','finalizing'].includes(status.value))
 const result = computed(() => tryOn.current?.output_image_url || shopper.imageUrl)
@@ -45,6 +47,7 @@ watch(() => tryOn.current?.id, (id) => {
 })
 
 onMounted(async () => {
+  savedLooks.value = loadSavedLooks()
   shopper.ensureSession()
   merchant.value = await resolveMerchant(tenantSlugFromRoute(route.params.slug), customTenantHost())
   const pid = route.query.product as string
@@ -123,6 +126,13 @@ function saveLook() {
   if (!tryOn.current) return
   persistLook(tryOn.current, currentProductIds.value)
   saved.value = true
+  savedLooks.value = loadSavedLooks()
+}
+
+function deleteSavedLook(generationId: string) {
+  removeSavedLook(generationId)
+  savedLooks.value = loadSavedLooks()
+  saved.value = Boolean(tryOn.current?.id && isLookSaved(tryOn.current.id))
 }
 
 async function buyProduct(item: Product) {
@@ -143,6 +153,7 @@ async function buyProduct(item: Product) {
           <div class="flex min-h-12 shrink-0 items-center justify-between border-b border-line px-3 sm:px-4">
             <div><p class="text-[9px] font-semibold uppercase tracking-[.18em] text-muted">Live fitting room</p><p class="mt-0.5 max-w-44 truncate text-xs font-semibold sm:max-w-sm">{{ lookProducts.map((p)=>p.name).join(' + ') || product?.name || 'Your outfit' }}</p></div>
             <div class="flex items-center gap-1">
+              <button class="focus-ring min-h-10 rounded-full px-3 text-[10px] font-semibold hover:bg-paper" @click="showSaved=true">Saved <span v-if="savedLooks.length">({{ savedLooks.length }})</span></button>
               <button v-if="status==='completed'" class="focus-ring min-h-10 rounded-full px-3 text-[10px] font-semibold hover:bg-paper" @click="saveLook">{{ saved?'Saved ✓':'Save' }}</button>
               <button v-if="status==='completed'" class="focus-ring min-h-10 rounded-full px-3 text-[10px] font-semibold hover:bg-paper" :disabled="busy" @click="regenerate">Regenerate</button>
               <button v-if="status==='completed' && lookProducts.length" class="focus-ring min-h-10 rounded-full bg-[var(--store-accent)] px-3 text-[10px] font-semibold text-white" @click="showShop=true">Shop look</button>
@@ -196,6 +207,16 @@ async function buyProduct(item: Product) {
         <div class="mb-2 flex items-center justify-between px-2 py-1"><p class="text-xs font-semibold">Your current look</p><button class="focus-ring grid h-10 w-10 place-items-center rounded-full bg-white" @click="showShop=false">×</button></div>
         <ShopThisLook :products="lookProducts" @buy="buyProduct" />
       </div>
+    </div>
+
+    <div v-if="showSaved" class="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 p-3 sm:items-center" @click.self="showSaved=false">
+      <section class="max-h-[88dvh] w-full max-w-3xl overflow-y-auto rounded-[1.6rem] bg-paper p-4 shadow-2xl">
+        <header class="sticky top-0 z-10 mb-4 flex items-center justify-between rounded-xl bg-paper/95 py-1 backdrop-blur"><div><h2 class="font-semibold">Saved looks</h2><p class="text-xs text-muted">Saved in this browser</p></div><button class="focus-ring grid h-10 w-10 place-items-center rounded-full bg-white" aria-label="Close saved looks" @click="showSaved=false">×</button></header>
+        <div v-if="savedLooks.length" class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <article v-for="look in savedLooks" :key="look.generationId" class="overflow-hidden rounded-2xl border border-line bg-white"><a :href="look.imageUrl" target="_blank" rel="noopener noreferrer" class="block aspect-[4/5] bg-cream"><img :src="look.imageUrl" alt="Saved virtual try-on" class="h-full w-full object-cover" /></a><div class="flex items-center justify-between gap-2 p-3"><div><p class="text-xs font-semibold">{{ look.productIds.length }}-piece look</p><p class="mt-0.5 text-[10px] text-muted">{{ new Date(look.createdAt).toLocaleDateString() }}</p></div><button class="focus-ring rounded-full px-2 py-1 text-[10px] font-semibold text-red-700" @click="deleteSavedLook(look.generationId)">Remove</button></div></article>
+        </div>
+        <div v-else class="grid min-h-52 place-items-center rounded-2xl border border-dashed border-line bg-white p-6 text-center"><div><p class="font-semibold">No saved looks yet</p><p class="mt-1 text-xs text-muted">Use Save above a completed try-on.</p></div></div>
+      </section>
     </div>
   </main>
 </template>

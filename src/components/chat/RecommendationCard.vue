@@ -21,8 +21,8 @@ async function add() {
 }
 </script>
 <template>
-  <article v-if="product" class="flex w-[82vw] max-w-[330px] shrink-0 gap-3 rounded-[1.2rem] border border-line bg-white p-3">
-    <img :src="product.primary_image_url" :alt="product.name" class="h-28 w-20 rounded-xl object-cover" />
+  <article v-if="product" class="flex w-[240px] shrink-0 gap-2.5 rounded-[1.2rem] border border-line bg-white p-2.5 sm:w-[260px]">
+    <img :src="product.primary_image_url" :alt="product.name" class="h-24 w-16 rounded-xl object-cover" />
     <div class="min-w-0 flex flex-1 flex-col py-1">
       <div><p class="truncate text-sm font-semibold">{{ product.name }}</p><p class="mt-1 text-xs font-medium">{{ formatMoney(product.price, product.currency) }}</p><p class="mt-2 line-clamp-2 text-xs leading-4 text-muted">{{ reason }}</p></div>
       <div class="mt-auto flex gap-2 pt-3">
