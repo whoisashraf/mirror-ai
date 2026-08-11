@@ -13,9 +13,9 @@ const bytes = (value: string) => Uint8Array.from(atob(value), (c) => c.charCodeA
 async function base64(blob: Blob) { const bytes = new Uint8Array(await blob.arrayBuffer()); let out=''; for (let i=0;i<bytes.length;i+=32768) out += String.fromCharCode(...bytes.subarray(i, i + 32768)); return btoa(out) }
 function dataUrl(image: { data: string; mime: string }) { return `data:${image.mime};base64,${image.data}` }
 async function fetchImage(url: string) { const response = await fetch(url); if (!response.ok) throw new Error(`Could not retrieve reference image (${response.status}).`); const blob = await response.blob(); return { data: await base64(blob), mime: blob.type || 'image/jpeg' } }
-function needsPrecision(products: any[]) { return products.length > 2 || products.some((p) => ['shoes','bag','earrings','necklace','headwear','other_accessory'].includes(p.try_on_category)) }
+function needsPrecision(products: any[]) { return products.length > 2 || products.some((p) => ['outerwear','dress','shoes','bag','earrings','necklace','headwear','other_accessory'].includes(p.try_on_category)) }
 function productRule(product: any) {
-  const base = `PRODUCT ${product.id} is ${product.name}. Preserve exact visible colour, silhouette, proportions, material, pattern, hardware and distinctive details. Never invent logos or embellishments. Render this product exactly once.`
+  const base = `PRODUCT ${product.id} is ${product.name}. Merchant description: ${product.description || 'No description provided.'} Preserve exact visible colour, silhouette, proportions, construction, closure, lapels, belt, pockets, material, pattern, hardware and distinctive details from its labelled reference images. Never invent logos, embellishments or a generic substitute. Render this product exactly once.`
   switch (product.try_on_category) {
     case 'outerwear': return `${base} The shopper must wear it normally on the torso as the outermost clothing layer. Never place it in a hand, over an arm, on a shoulder, beside the shopper or elsewhere in the scene.`
     case 'top': return `${base} The shopper must wear it normally on the torso, beneath outerwear when outerwear is selected. Never duplicate it or place a spare garment in the scene.`
@@ -123,10 +123,15 @@ Deno.serve(async (req) => {
     let generated = await imageRequest(model, prompt, refs)
     let fidelity = await qa(generated.output, products, productRefs)
     let correctionAttempted = false
-    if (Number(fidelity?.overall || 0) < 0.72 || fidelity?.compositionValid === false || (fidelity?.compositionProblems?.length || 0) > 0) {
+    const weakProduct = () => (fidelity?.products || []).some((item:any) => Number(item?.fidelity || 0) < 0.82)
+    if (Number(fidelity?.overall || 0) < 0.78 || weakProduct() || fidelity?.compositionValid === false || (fidelity?.compositionProblems?.length || 0) > 0) {
       correctionAttempted = true
       generated = await imageRequest(model, `Correct this current generated fashion look into one logical outfit. Scene-logic QA found: ${JSON.stringify(fidelity?.compositionProblems || [])}. Product-fidelity QA found: ${JSON.stringify(fidelity?.products || [])}. Preserve shopper identity, anatomy, pose and already-correct elements. Every selected garment must be worn exactly once in its correct body location and layer order. Remove all duplicate, spare, held, draped, floating or displayed garments; only a selected bag may be carried. Reference images are source material only and must not appear as extra scene objects.`, [generated.output, ...productRefs.map((ref) => ref.image)])
       fidelity = await qa(generated.output, products, productRefs)
+    }
+
+    if (Number(fidelity?.overall || 0) < 0.72 || weakProduct() || fidelity?.compositionValid === false) {
+      throw new Error('PRODUCT_FIDELITY_FAILED')
     }
 
     const path = `${merchantId}/${sessionId}/${generation.id}.png`
@@ -144,6 +149,7 @@ Deno.serve(async (req) => {
     if (message === 'AUTH_REQUIRED') return errorJson('Sign in to generate a try-on.', 401)
     if (message.startsWith('SESSION_')) return errorJson('Invalid shopper session.', 401, message)
     if (message === 'RATE_LIMIT') return errorJson('Generation limit reached. Please try again later.', 429)
+    if (message === 'PRODUCT_FIDELITY_FAILED') return errorJson('Mirror could not match the selected product closely enough. The merchant needs a clearer, product-specific reference image.', 422)
     console.error(error)
     return errorJson('Try-on generation failed.', 500, message)
   }

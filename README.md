@@ -13,6 +13,7 @@ This build uses the hosted Supabase and OpenRouter services and includes:
 - chained generations for complete looks
 - shoes / accessories fidelity handling
 - outfit-logic QA that rejects duplicated, floating or hand-held garments
+- per-product fidelity gates that reject outputs which do not match merchant references
 - merchant analytics funnel
 - **authenticated shoppers with private browser-scoped fitting sessions**
 - **OpenRouter-only AI backend**
