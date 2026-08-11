@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
-import { serviceClient } from '../_shared/auth.ts'
+import { requireUser, serviceClient } from '../_shared/auth.ts'
 import { requireShopperSession } from '../_shared/session.ts'
 
 const OPENROUTER_KEY = Deno.env.get('OPENROUTER_API_KEY') || ''
@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return errorJson('Method not allowed.', 405)
   const service = serviceClient()
   try {
+    await requireUser(req, service)
     const body = await req.json()
     const message = String(body.message || '').trim().slice(0, 1800)
     const merchantId = String(body.merchantId || '')
@@ -125,6 +126,7 @@ Deno.serve(async (req) => {
     return json({ conversationId: conversation.id, reply })
   } catch (error) {
     const message = errorMessage(error)
+    if (message === 'AUTH_REQUIRED') return errorJson('Sign in to chat with Mirror.', 401)
     if (message.startsWith('SESSION_')) return errorJson('Invalid shopper session.', 401, message)
     console.error(error)
     return errorJson('Mirror could not answer right now.', 500, message)

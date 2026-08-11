@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
-import { serviceClient } from '../_shared/auth.ts'
+import { requireUser, serviceClient } from '../_shared/auth.ts'
 import { requireShopperSession } from '../_shared/session.ts'
 
 const decodeBase64 = (value: string) => Uint8Array.from(atob(value), (c) => c.charCodeAt(0))
@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
   const service = serviceClient()
 
   try {
+    await requireUser(req, service)
     const body = await req.json()
     const merchantId = String(body.merchantId || '')
     const sessionId = String(body.sessionId || '')
@@ -36,6 +37,7 @@ Deno.serve(async (req) => {
     return json({ image: { id: row.id, storagePath: row.storage_path, signedUrl: signed.signedUrl } })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    if (message === 'AUTH_REQUIRED') return errorJson('Sign in to upload a try-on photo.', 401)
     if (message.startsWith('SESSION_')) return errorJson('Invalid shopper session.', 401, message)
     console.error(error)
     return errorJson('Shopper image upload failed.', 500, message)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { getOwnedMerchant } from '@/lib/api'
@@ -13,18 +13,24 @@ const error = ref('')
 const notice = ref('')
 const loading = ref(false)
 const creatingAccount = ref(false)
+const redirect = computed(() => typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/dashboard')
+const shopperFlow = computed(() => !redirect.value.startsWith('/dashboard'))
 
-async function claimMerchantAndContinue() {
-  const existing = await getOwnedMerchant()
-  if (!existing) {
-    const { error: claimError } = await supabase.rpc('claim_mirror_atelier')
-    if (claimError) throw claimError
+async function continueAfterAuth() {
+  if (!shopperFlow.value) {
+    const existing = await getOwnedMerchant()
+    if (!existing) {
+      const { error: claimError } = await supabase.rpc('claim_mirror_atelier')
+      if (claimError) throw claimError
+    }
   }
-  const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/dashboard')
-    ? route.query.redirect
-    : '/dashboard'
-  await router.replace(redirect)
+  await router.replace(redirect.value)
 }
+
+onMounted(async () => {
+  const { data } = await supabase.auth.getUser()
+  if (data.user) await continueAfterAuth()
+})
 
 async function submit() {
   loading.value = true
@@ -44,7 +50,7 @@ async function submit() {
         creatingAccount.value = false
         return
       }
-      await claimMerchantAndContinue()
+      await continueAfterAuth()
       return
     }
 
@@ -53,7 +59,7 @@ async function submit() {
       password: password.value,
     })
     if (signInError) throw signInError
-    await claimMerchantAndContinue()
+    await continueAfterAuth()
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Authentication failed.'
   } finally {
@@ -65,10 +71,10 @@ async function submit() {
 <template>
   <main class="grid min-h-screen place-items-center bg-paper px-5">
     <form class="w-full max-w-md rounded-[1.6rem] border border-line bg-white p-6" @submit.prevent="submit">
-      <p class="text-xs font-semibold uppercase tracking-[.2em] text-muted">Merchant access</p>
+      <p class="text-xs font-semibold uppercase tracking-[.2em] text-muted">{{ shopperFlow ? 'Shopper access' : 'Merchant access' }}</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight">{{ creatingAccount ? 'Create your account' : 'Sign in to Mirror' }}</h1>
       <p class="mt-2 text-sm leading-6 text-muted">
-        {{ creatingAccount ? 'Create the first merchant account for Mirror Atelier.' : 'Use your merchant email and password.' }}
+        {{ shopperFlow ? 'Sign in or create an account before uploading a photo and starting your private try-on.' : creatingAccount ? 'Create the first merchant account for Mirror Atelier.' : 'Use your merchant email and password.' }}
       </p>
       <label class="mt-7 block text-xs font-medium">Email
         <input v-model="email" type="email" autocomplete="email" required class="mt-2 min-h-12 w-full rounded-xl border border-line px-3 outline-none focus:border-ink" placeholder="you@store.com" />

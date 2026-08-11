@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useShopperStore } from '@/stores/shopper'
 import { trackEvent } from '@/lib/api'
 import AppButton from '@/components/ui/AppButton.vue'
 import type { TryOnCategory } from '@/types'
+import { initializeAuth } from '@/lib/auth'
 
 const props = defineProps<{ merchantId?: string; productId?: string; tryOnCategory?: TryOnCategory }>()
 const shopper = useShopperStore()
+const route = useRoute()
+const router = useRouter()
 const consent = ref(false)
 const input = ref<HTMLInputElement | null>(null)
 const error = ref('')
@@ -22,6 +26,10 @@ const photoGuidance = computed(() => {
 async function handleFile(file?: File) {
   error.value = ''
   if (!file) return
+  if (!await initializeAuth()) {
+    await router.push({ path:'/auth', query:{ redirect:route.fullPath } })
+    return
+  }
   if (!consent.value) { error.value = 'Please confirm consent before uploading your photo.'; return }
   if (!file.type.startsWith('image/')) { error.value = 'Choose an image file.'; return }
   if (file.size > 10 * 1024 * 1024) { error.value = 'Please use an image under 10 MB.'; return }

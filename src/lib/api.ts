@@ -22,14 +22,16 @@ function errorMessage(value: unknown, fallback: string): string {
   return fallback
 }
 
-async function invokeShopperFunction<T>(name: string, body: Record<string, unknown>) {
+async function invokeShopperFunction<T>(name: string, body: Record<string, unknown>, requireAuth = false) {
   if (!supabaseUrl || !supabasePublishableKey) throw new Error('Supabase is not configured.')
   const { id: sessionId, token } = getShopperSession()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (requireAuth && !session) throw new Error('Sign in to use virtual try-on.')
   const response = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${supabasePublishableKey}`,
+      Authorization: `Bearer ${session?.access_token || supabasePublishableKey}`,
       apikey: supabasePublishableKey,
       'x-mirror-session-token': token,
     },
@@ -101,12 +103,12 @@ export async function uploadShopperImage(file: File, merchantId: string, consent
     fileName: file.name,
     contentType: file.type || 'image/jpeg',
     base64Data: await fileToBase64(file),
-  })
+  }, true)
   return { id: data.image.id, url: data.image.signedUrl, storagePath: data.image.storagePath, consentAt, sessionId }
 }
 
 export async function deleteShopperImage(imageId: string, storagePath: string, merchantId?: string) {
-  await invokeShopperFunction('delete-shopper-image', { merchantId, imageId, storagePath })
+  await invokeShopperFunction('delete-shopper-image', { merchantId, imageId, storagePath }, true)
 }
 
 export async function createTryOn(params: { merchantId: string; sessionId: string; shopperImageId?: string; shopperImageUrl?: string; productIds: string[]; mode: 'single' | 'complete_look'; parentGenerationId?: string }): Promise<TryOnGeneration> {
@@ -116,12 +118,12 @@ export async function createTryOn(params: { merchantId: string; sessionId: strin
     productIds: params.productIds,
     generationMode: params.mode,
     parentGenerationId: params.parentGenerationId,
-  })
+  }, true)
   return data.generation
 }
 
 export async function chatWithMirror(params: { conversationId?: string; merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; currentProductIds?: string[] }): Promise<{ conversationId: string; reply: MirrorReply }> {
-  return invokeShopperFunction('chat-with-mirror', params)
+  return invokeShopperFunction('chat-with-mirror', params, true)
 }
 
 export async function trackEvent(eventType: string, payload: Record<string, unknown>) {

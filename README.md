@@ -12,7 +12,7 @@ This build uses the hosted Supabase and OpenRouter services and includes:
 - chained generations for complete looks
 - shoes / accessories fidelity handling
 - merchant analytics funnel
-- **guest shopper sessions (no Supabase anonymous sign-ins)**
+- **authenticated shoppers with private browser-scoped fitting sessions**
 - **OpenRouter-only AI backend**
 
 ---
@@ -42,9 +42,9 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_PUBLISHABLE_KEY=<local publishable or anon-compatible key>
 ```
 
-> Shopper sessions are **not** implemented with Supabase anonymous auth.
-> Shoppers use server-managed guest session tokens stored in browser local storage.
-> Supabase Auth is used only for merchants/admins.
+> Shoppers use normal email/password Supabase Auth before uploading a photo or
+> starting a try-on. A separate server-managed fitting-session token keeps each
+> browser's private try-on resources scoped and is stored in local storage.
 
 ### 3. Start Supabase locally
 
@@ -96,20 +96,20 @@ clears the local Supabase session.
 
 ### Shoppers
 
-Do **not** sign in.
+Sign in with normal Supabase email/password Auth before uploading a photo,
+generating a look, deleting a photo, or chatting with Mirror.
 
-The app generates a browser-local guest session:
+After authentication, the app also generates a browser-local fitting session:
 
 - `session_id`
 - `session_token`
 
-All shopper-sensitive operations go through Edge Functions with the guest session token:
+All shopper-sensitive operations require both the Supabase user JWT and fitting-session token:
 
 - `upload-shopper-image`
 - `delete-shopper-image`
 - `generate-try-on`
 - `chat-with-mirror`
-- `track-event`
 
 The token is hashed server-side in `shopper_sessions`.
 
@@ -123,23 +123,25 @@ uses short-lived signed URLs; browser saves do not weaken Storage policies.
 
 ### Shopper functions
 
-These use **custom guest-session auth** and should be deployed with JWT verification disabled:
+These require a Supabase user JWT plus the custom fitting-session token and must
+keep JWT verification enabled:
 
 - `upload-shopper-image`
 - `delete-shopper-image`
 - `generate-try-on`
 - `chat-with-mirror`
-- `track-event`
 
 Example:
 
 ```bash
-supabase functions deploy upload-shopper-image --no-verify-jwt
-supabase functions deploy delete-shopper-image --no-verify-jwt
-supabase functions deploy generate-try-on --no-verify-jwt
-supabase functions deploy chat-with-mirror --no-verify-jwt
-supabase functions deploy track-event --no-verify-jwt
+supabase functions deploy upload-shopper-image
+supabase functions deploy delete-shopper-image
+supabase functions deploy generate-try-on
+supabase functions deploy chat-with-mirror
 ```
+
+`track-event` also keeps gateway JWT verification enabled, but accepts the
+frontend publishable token so public storefront views can still be counted.
 
 ### Merchant function
 

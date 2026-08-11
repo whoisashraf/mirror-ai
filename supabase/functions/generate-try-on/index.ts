@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
-import { serviceClient } from '../_shared/auth.ts'
+import { requireUser, serviceClient } from '../_shared/auth.ts'
 import { requireShopperSession } from '../_shared/session.ts'
 
 const OPENROUTER_KEY = Deno.env.get('OPENROUTER_API_KEY') || ''
@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
   const service = serviceClient()
   let generationId: string | null = null
   try {
+    await requireUser(req, service)
     if (!OPENROUTER_KEY) return errorJson('OPENROUTER_API_KEY is not configured.', 503)
     const body = await req.json()
     const merchantId = String(body.merchantId || '')
@@ -137,6 +138,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (generationId) await service.from('try_on_generations').update({ status: 'failed', error: message, completed_at: new Date().toISOString() }).eq('id', generationId)
+    if (message === 'AUTH_REQUIRED') return errorJson('Sign in to generate a try-on.', 401)
     if (message.startsWith('SESSION_')) return errorJson('Invalid shopper session.', 401, message)
     if (message === 'RATE_LIMIT') return errorJson('Generation limit reached. Please try again later.', 429)
     console.error(error)

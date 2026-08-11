@@ -8,12 +8,12 @@ const router = createRouter({
     { path:'/', component:LandingView },
     { path:'/store/:slug', component:() => import('@/views/store/StoreHomeView.vue') },
     { path:'/store/:slug/product/:productId', component:() => import('@/views/store/ProductDetailView.vue') },
-    { path:'/store/:slug/try-on/:generationId', component:() => import('@/views/TryOnView.vue') },
+    { path:'/store/:slug/try-on/:generationId', component:() => import('@/views/TryOnView.vue'), meta:{ requiresAuth:true } },
     // Clean white-label routes used when the same app is mounted on a merchant custom domain.
     { path:'/product/:productId', component:() => import('@/views/store/ProductDetailView.vue') },
-    { path:'/try-on/:generationId', component:() => import('@/views/TryOnView.vue') },
+    { path:'/try-on/:generationId', component:() => import('@/views/TryOnView.vue'), meta:{ requiresAuth:true } },
     { path:'/privacy', component:() => import('@/views/PrivacyView.vue') },
-    { path:'/auth', component:() => import('@/views/AuthView.vue'), meta:{ guestOnly:true } },
+    { path:'/auth', component:() => import('@/views/AuthView.vue') },
     { path:'/dashboard', component:() => import('@/views/dashboard/DashboardHomeView.vue'), meta:{ requiresAuth:true } },
     { path:'/dashboard/products', component:() => import('@/views/dashboard/DashboardProductsView.vue'), meta:{ requiresAuth:true } },
     { path:'/dashboard/analytics', component:() => import('@/views/dashboard/DashboardAnalyticsView.vue'), meta:{ requiresAuth:true } },
@@ -26,7 +26,6 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const user = await initializeAuth()
   if (to.meta.requiresAuth && !user) return { path:'/auth', query:{ redirect:to.fullPath } }
-  if (to.meta.guestOnly && user) return { path:'/dashboard' }
 })
 
 export default router

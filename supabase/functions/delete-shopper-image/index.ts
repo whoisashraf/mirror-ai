@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
-import { serviceClient } from '../_shared/auth.ts'
+import { requireUser, serviceClient } from '../_shared/auth.ts'
 import { requireShopperSession } from '../_shared/session.ts'
 
 Deno.serve(async (req) => {
@@ -9,6 +9,7 @@ Deno.serve(async (req) => {
   const service = serviceClient()
 
   try {
+    await requireUser(req, service)
     const body = await req.json()
     const sessionId = String(body.sessionId || '')
     const imageId = String(body.imageId || '')
@@ -21,6 +22,7 @@ Deno.serve(async (req) => {
     return json({ ok: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    if (message === 'AUTH_REQUIRED') return errorJson('Sign in to delete a try-on photo.', 401)
     if (message.startsWith('SESSION_')) return errorJson('Invalid shopper session.', 401, message)
     console.error(error)
     return errorJson('Shopper image delete failed.', 500, message)

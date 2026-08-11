@@ -10,6 +10,7 @@ import { activateTenantScope, applyStorefrontTheme, customTenantHost, storefront
 import { useShopperStore } from '@/stores/shopper'
 import { useTryOnStore } from '@/stores/tryOn'
 import { useChatStore } from '@/stores/chat'
+import { initializeAuth } from '@/lib/auth'
 import type { Merchant, Product } from '@/types'
 
 const route = useRoute(), router = useRouter(), shopper = useShopperStore(), tryOn = useTryOnStore(), chat = useChatStore()
@@ -31,6 +32,10 @@ onMounted(async () => {
 
 async function start() {
   if (!merchant.value || !product.value) return
+  if (!await initializeAuth()) {
+    await router.push({ path:'/auth', query:{ redirect:route.fullPath } })
+    return
+  }
   if (!shopper.imageUrl) { showPhoto.value = true; return }
   starting.value = true
   try {
