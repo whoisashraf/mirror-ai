@@ -11,6 +11,7 @@ This build uses the hosted Supabase and OpenRouter services and includes:
 - conversational stylist chat with structured product actions
 - chained generations for complete looks
 - shoes / accessories fidelity handling
+- outfit-logic QA that rejects duplicated, floating or hand-held garments
 - merchant analytics funnel
 - **authenticated shoppers with private browser-scoped fitting sessions**
 - **OpenRouter-only AI backend**

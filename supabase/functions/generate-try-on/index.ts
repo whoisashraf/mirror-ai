@@ -15,10 +15,13 @@ function dataUrl(image: { data: string; mime: string }) { return `data:${image.m
 async function fetchImage(url: string) { const response = await fetch(url); if (!response.ok) throw new Error(`Could not retrieve reference image (${response.status}).`); const blob = await response.blob(); return { data: await base64(blob), mime: blob.type || 'image/jpeg' } }
 function needsPrecision(products: any[]) { return products.length > 2 || products.some((p) => ['shoes','bag','earrings','necklace','headwear','other_accessory'].includes(p.try_on_category)) }
 function productRule(product: any) {
-  const base = `PRODUCT ${product.id} is ${product.name}. Preserve exact visible colour, silhouette, proportions, material, pattern, hardware and distinctive details. Never invent logos or embellishments.`
+  const base = `PRODUCT ${product.id} is ${product.name}. Preserve exact visible colour, silhouette, proportions, material, pattern, hardware and distinctive details. Never invent logos or embellishments. Render this product exactly once.`
   switch (product.try_on_category) {
+    case 'outerwear': return `${base} The shopper must wear it normally on the torso as the outermost clothing layer. Never place it in a hand, over an arm, on a shoulder, beside the shopper or elsewhere in the scene.`
+    case 'top': return `${base} The shopper must wear it normally on the torso, beneath outerwear when outerwear is selected. Never duplicate it or place a spare garment in the scene.`
+    case 'dress': return `${base} The shopper must wear it normally as the primary garment. Never add a second copy or a spare garment.`
     case 'shoes': return `${base} Replace only footwear. Render a consistent left/right pair. Preserve toe, sole, heel and closure.`
-    case 'bag': return `${base} Add naturally carried or worn. Preserve bag shape, straps and hardware.`
+    case 'bag': return `${base} This is the only selected category that may be naturally carried in a hand or worn on the shoulder. Preserve bag shape, straps and hardware.`
     case 'earrings': return `${base} Apply to visible ears where appropriate. Preserve scale and geometry.`
     case 'necklace': return `${base} Place naturally around the neck/chest. Preserve chain and pendant geometry.`
     case 'bottom': return `${base} Replace or style the lower-body garment while preserving unrelated garments.`
@@ -39,7 +42,7 @@ async function imageRequest(model: string, prompt: string, references: { data: s
 }
 async function qa(output: { data: string; mime: string }, products: any[], refs: { productId: string; image: { data: string; mime: string } }[]) {
   try {
-    const content: any[] = [{ type: 'text', text: `Compare the generated fashion image with exact merchant references. Return JSON {"overall":0.0,"products":[{"productId":"uuid","fidelity":0.0,"problems":["..."]}]}. Penalize wrong colour, silhouette, shoe shape, heel/sole, bag shape/strap/hardware, jewellery geometry, patterns, logos or missing items. Products: ${products.map((p) => `${p.id}:${p.name}(${p.try_on_category})`).join('; ')}` }, { type: 'image_url', image_url: { url: dataUrl(output) } }]
+    const content: any[] = [{ type: 'text', text: `Compare the generated fashion image with exact merchant references and inspect scene logic. Return JSON {"overall":0.0,"compositionValid":true,"compositionProblems":["..."],"products":[{"productId":"uuid","fidelity":0.0,"problems":["..."]}]}. Set compositionValid=false and reduce overall heavily if any garment is duplicated, floating, displayed beside the shopper, draped over an arm, or held in a hand. Every selected clothing product must be worn exactly once in its anatomically correct location; only a selected bag may be carried. Also penalize wrong colour, silhouette, shoe shape, heel/sole, bag shape/strap/hardware, jewellery geometry, patterns, logos or missing items. Products: ${products.map((p) => `${p.id}:${p.name}(${p.try_on_category})`).join('; ')}` }, { type: 'image_url', image_url: { url: dataUrl(output) } }]
     for (const ref of refs) content.push({ type: 'text', text: `Exact reference for ${ref.productId}` }, { type: 'image_url', image_url: { url: dataUrl(ref.image) } })
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST', headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': SITE_URL, 'X-Title': 'Mirror AI' },
@@ -92,7 +95,7 @@ Deno.serve(async (req) => {
     }
 
     const model = needsPrecision(products) ? PRECISION_MODEL : IMAGE_MODEL
-    const prompt = `Create a photorealistic virtual fashion try-on. ORIGINAL SHOPPER is the identity anchor: preserve recognizable identity, face, skin tone, body proportions and anatomy. ${parent ? 'CURRENT LOOK is the latest visual state; edit it rather than restarting.' : 'Start from the original shopper.'} ${products.map(productRule).join(' ')} Use only supplied merchant products and never substitute generic lookalikes. Natural realistic lighting. Visual approximation only; not a fit guarantee.`
+    const prompt = `Create one coherent photorealistic virtual fashion try-on image. ORIGINAL SHOPPER is the identity anchor: preserve recognizable identity, face, skin tone, body proportions, pose, hands and anatomy. ${parent ? 'CURRENT LOOK is the latest visual state; edit it rather than restarting.' : 'Start from the original shopper.'} ${products.map(productRule).join(' ')} OUTFIT LOGIC IS MANDATORY: every selected clothing product is worn exactly once in its anatomically correct position and correct layer order. Do not duplicate any garment. Do not show spare clothing, clothing on hangers, clothing in the shopper's hands, clothing draped over an arm or shoulder, floating products, product cutouts, inset panels, collages or catalogue displays. A hand may hold a product only when that selected product is a bag. Product reference images are source material only, never additional objects to reproduce in the scene. Use only supplied merchant products and never substitute generic lookalikes. Keep the shopper's hands natural and empty unless carrying a selected bag. Natural realistic lighting. Visual approximation only; not a fit guarantee.`
     const { data: generation, error: generationError } = await service.from('try_on_generations').insert({ merchant_id: merchantId, shopper_session_id: shopperSession.id, session_id: sessionId, shopper_image_id: shopperImageId, status: 'generating', generation_mode: generationMode, parent_generation_id: parent?.id || null, provider: 'openrouter', model, prompt }).select('*').single()
     if (generationError) throw generationError
     generationId = generation.id
@@ -120,9 +123,9 @@ Deno.serve(async (req) => {
     let generated = await imageRequest(model, prompt, refs)
     let fidelity = await qa(generated.output, products, productRefs)
     let correctionAttempted = false
-    if (Number(fidelity?.overall || 0) < 0.72) {
+    if (Number(fidelity?.overall || 0) < 0.72 || fidelity?.compositionValid === false || (fidelity?.compositionProblems?.length || 0) > 0) {
       correctionAttempted = true
-      generated = await imageRequest(model, `Correct this current generated fashion look. Product-fidelity QA found: ${JSON.stringify(fidelity?.products || [])}. Preserve shopper identity and already-correct elements. Fix only mismatched merchant products.`, [generated.output, ...productRefs.map((ref) => ref.image)])
+      generated = await imageRequest(model, `Correct this current generated fashion look into one logical outfit. Scene-logic QA found: ${JSON.stringify(fidelity?.compositionProblems || [])}. Product-fidelity QA found: ${JSON.stringify(fidelity?.products || [])}. Preserve shopper identity, anatomy, pose and already-correct elements. Every selected garment must be worn exactly once in its correct body location and layer order. Remove all duplicate, spare, held, draped, floating or displayed garments; only a selected bag may be carried. Reference images are source material only and must not appear as extra scene objects.`, [generated.output, ...productRefs.map((ref) => ref.image)])
       fidelity = await qa(generated.output, products, productRefs)
     }
 
