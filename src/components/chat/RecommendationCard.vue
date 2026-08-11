@@ -21,13 +21,13 @@ async function add() {
 }
 </script>
 <template>
-  <article v-if="product" class="flex w-full gap-3 rounded-[1.2rem] border border-line bg-white p-2.5">
-    <img :src="product.primary_image_url" :alt="product.name" class="h-20 w-16 shrink-0 rounded-xl object-cover" />
+  <article v-if="product" class="flex min-w-0 gap-2.5 rounded-[1.2rem] border border-line bg-white p-2.5">
+    <img :src="product.primary_image_url" :alt="product.name" class="h-16 w-14 shrink-0 rounded-xl object-cover" />
     <div class="min-w-0 flex flex-1 flex-col py-1">
-      <div><p class="truncate text-sm font-semibold">{{ product.name }}</p><p class="mt-1 text-xs font-medium">{{ formatMoney(product.price, product.currency) }}</p><p class="mt-2 line-clamp-2 text-xs leading-4 text-muted">{{ reason }}</p></div>
+      <div><p class="truncate text-xs font-semibold">{{ product.name }}</p><p class="mt-0.5 text-[11px] font-medium">{{ formatMoney(product.price, product.currency) }}</p><p class="mt-1 line-clamp-2 text-[10px] leading-4 text-muted">{{ reason }}</p></div>
       <div class="mt-auto flex gap-2 pt-2">
-        <button class="focus-ring min-h-9 flex-1 rounded-full bg-ink px-3 text-[10px] font-semibold text-white disabled:bg-line disabled:text-muted" :disabled="alreadyInLook" @click="add">{{ alreadyInLook ? 'In look ✓' : 'Add to look' }}</button>
-        <RouterLink :to="href" class="focus-ring grid min-h-9 place-items-center rounded-full border border-line px-3 text-[10px] font-semibold" @click="record('view_product')">View</RouterLink>
+        <button class="focus-ring min-h-8 flex-1 rounded-full bg-ink px-2 text-[9px] font-semibold text-white disabled:bg-line disabled:text-muted" :disabled="alreadyInLook" @click="add">{{ alreadyInLook ? 'In look ✓' : 'Add' }}</button>
+        <RouterLink :to="href" class="focus-ring grid min-h-8 place-items-center rounded-full border border-line px-2 text-[9px] font-semibold" @click="record('view_product')">View</RouterLink>
       </div>
     </div>
   </article>

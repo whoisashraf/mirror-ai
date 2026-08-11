@@ -88,7 +88,7 @@ function actionLabel(action: string | MirrorAction) {
       <div v-if="!chat.messages.length"><p class="text-sm leading-6 text-muted">Ask about colour, occasion, styling, modest options or a budget. Your current generated look stays visible while the conversation changes it.</p><div class="mt-4 flex flex-wrap gap-2"><button v-for="p in prompts" :key="p" class="focus-ring rounded-full border border-line px-3 py-2 text-left text-xs hover:border-ink" @click="send(p)">{{ p }}</button></div></div>
       <template v-for="message in visibleMessages" :key="message.id">
         <div :class="message.role === 'user' ? 'ml-auto bg-ink text-white' : 'mr-auto bg-paper text-ink'" class="max-w-[78%] rounded-[1.2rem] px-4 py-2.5 text-sm leading-6">{{ message.content }}</div>
-        <div v-if="message.id===latestRecommendationMessageId && message.recommendations?.length" class="grid gap-2 pb-1">
+        <div v-if="message.id===latestRecommendationMessageId && message.recommendations?.length" class="grid gap-2 pb-1 xl:grid-cols-2">
           <RecommendationCard
             v-for="rec in message.recommendations"
             :key="rec.productId"

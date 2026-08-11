@@ -164,10 +164,10 @@ async function buyProduct(item: Product) {
             </div>
           </div>
 
-          <div class="relative flex min-h-0 flex-1 items-center justify-center bg-cream">
+          <div class="relative flex min-h-0 flex-1 flex-col bg-cream">
             <div v-if="error && !tryOn.current" class="m-5 rounded-[1.5rem] border border-red-200 bg-white p-5"><h2 class="font-semibold">Try-on unavailable</h2><p class="mt-2 text-sm text-muted">{{error}}</p><AppButton v-if="merchant" class="mt-4" @click="router.push(storefrontPath(merchant,'/'))">Choose a product</AppButton></div>
             <GenerationProgress v-else-if="status!=='completed'&&status!=='failed'" :status="status" :product-count="currentProductIds.length" />
-            <img v-else-if="status==='completed' && result" :src="result" alt="Current virtual try-on look" class="h-full w-full object-contain"/>
+            <img v-else-if="status==='completed' && result" :src="result" alt="Current virtual try-on look" class="min-h-0 w-full flex-1 object-contain"/>
             <div v-else class="m-5 rounded-[1.5rem] border border-red-200 bg-white p-5"><h2 class="font-semibold">Generation didn’t complete</h2><p class="mt-2 text-sm text-muted">{{ tryOn.current?.error || error || 'Please try again.' }}</p><AppButton class="mt-4" @click="regenerate">Retry</AppButton></div>
 
             <div v-if="status==='completed'" class="absolute left-2 top-2 flex flex-wrap gap-1.5">
@@ -175,7 +175,7 @@ async function buyProduct(item: Product) {
               <span v-if="tryOn.current?.fidelity_report" class="rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-semibold shadow-sm">Fidelity {{ fidelityPercent }}%</span>
             </div>
 
-            <div v-if="history.length > 1 && status==='completed'" class="absolute bottom-2 left-2 right-2 flex items-center gap-2 rounded-[1rem] bg-white/92 p-2 shadow-sm backdrop-blur">
+            <div v-if="history.length > 1 && status==='completed'" class="flex min-h-14 shrink-0 items-center gap-2 border-t border-line bg-white px-3 py-2">
               <span class="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted">Looks</span>
               <div class="hide-scrollbar flex min-w-0 gap-1.5 overflow-x-auto">
                 <button v-for="(look,index) in history" :key="look.id" class="focus-ring h-10 w-9 shrink-0 overflow-hidden rounded-lg border-2" :class="look.id===tryOn.current?.id?'border-[var(--store-accent)]':'border-transparent'" :aria-label="`Open look ${index+1}`" @click="tryOn.selectHistory(look.id)"><img :src="look.output_image_url || shopper.imageUrl" alt="" class="h-full w-full object-cover" /></button>
