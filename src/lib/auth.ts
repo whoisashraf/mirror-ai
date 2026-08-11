@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 let currentUser: User | null = null
 let initialized = false
 let initialization: Promise<User | null> | null = null
+export type AppRole = 'admin' | 'user'
 
 export async function initializeAuth(): Promise<User | null> {
   if (initialized) return currentUser
@@ -25,6 +26,18 @@ export function setCurrentUser(user: User | null) {
 
 export function startAuthListener() {
   return supabase.auth.onAuthStateChange((_event, session) => setCurrentUser(session?.user ?? null))
+}
+
+export async function getUserRole(user = currentUser): Promise<AppRole | null> {
+  if (!user) return null
+  const { data, error } = await supabase
+    .from('merchants')
+    .select('id')
+    .eq('owner_user_id', user.id)
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data ? 'admin' : 'user'
 }
 
 export async function signOut() {

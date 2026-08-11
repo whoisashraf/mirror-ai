@@ -94,6 +94,14 @@ dashboard URL after sign-in. Supabase RLS remains the authorization boundary for
 merchant records. Sessions persist and refresh through `supabase-js`; signing out
 clears the local Supabase session.
 
+Application roles are derived from protected database ownership:
+
+- `admin`: the authenticated user owns a row in `merchants`
+- `user`: an authenticated shopper without merchant ownership
+
+The storefront navbar shows the active account and role. Only admins can enter
+dashboard routes. Role decisions never use editable `user_metadata`.
+
 ### Shoppers
 
 Sign in with normal Supabase email/password Auth before uploading a photo,

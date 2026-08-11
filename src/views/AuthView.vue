@@ -13,8 +13,9 @@ const error = ref('')
 const notice = ref('')
 const loading = ref(false)
 const creatingAccount = ref(false)
-const redirect = computed(() => typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/dashboard')
-const shopperFlow = computed(() => !redirect.value.startsWith('/dashboard'))
+const adminFlow = computed(() => route.query.role === 'admin' || (typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/dashboard')))
+const redirect = computed(() => typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : adminFlow.value ? '/dashboard' : '/')
+const shopperFlow = computed(() => !adminFlow.value)
 
 async function continueAfterAuth() {
   if (!shopperFlow.value) {

@@ -3,10 +3,16 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOwnedMerchant } from '@/lib/api'
 import { signOut } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 const slug=ref('mirror-atelier')
 const router=useRouter()
 const signingOut=ref(false)
-onMounted(async()=>{const m=await getOwnedMerchant();if(m)slug.value=m.slug})
+const accountEmail=ref('')
+onMounted(async()=>{
+  const [{data},m]=await Promise.all([supabase.auth.getUser(),getOwnedMerchant()])
+  accountEmail.value=data.user?.email || ''
+  if(m)slug.value=m.slug
+})
 async function logout(){
   signingOut.value=true
   try { await signOut(); await router.replace('/auth') }
@@ -19,6 +25,7 @@ async function logout(){
     <nav class="flex gap-1 overflow-x-auto px-3 pb-3 text-sm lg:block lg:space-y-1">
       <RouterLink v-for="item in [{to:'/dashboard',label:'Overview'},{to:'/dashboard/products',label:'Products'},{to:'/dashboard/analytics',label:'Analytics'},{to:'/dashboard/settings',label:'Settings'}]" :key="item.to" :to="item.to" class="block whitespace-nowrap rounded-xl px-3 py-2.5 text-muted hover:bg-paper hover:text-ink" active-class="!bg-paper !font-semibold !text-ink" exact>{{ item.label }}</RouterLink>
     </nav>
+    <div v-if="accountEmail" class="mx-3 mb-2 rounded-xl bg-paper px-3 py-2"><p class="truncate text-xs font-semibold">{{accountEmail}}</p><p class="mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted">Admin</p></div>
     <div class="px-3 pb-4"><button class="min-h-10 w-full rounded-xl px-3 text-left text-xs font-semibold text-muted hover:bg-paper hover:text-ink disabled:opacity-50" :disabled="signingOut" @click="logout">{{ signingOut ? 'Signing out…' : 'Sign out' }}</button></div>
   </aside>
 </template>

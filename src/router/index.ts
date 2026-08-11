@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '@/views/LandingView.vue'
-import { initializeAuth } from '@/lib/auth'
+import { getUserRole, initializeAuth } from '@/lib/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,10 +14,10 @@ const router = createRouter({
     { path:'/try-on/:generationId', component:() => import('@/views/TryOnView.vue'), meta:{ requiresAuth:true } },
     { path:'/privacy', component:() => import('@/views/PrivacyView.vue') },
     { path:'/auth', component:() => import('@/views/AuthView.vue') },
-    { path:'/dashboard', component:() => import('@/views/dashboard/DashboardHomeView.vue'), meta:{ requiresAuth:true } },
-    { path:'/dashboard/products', component:() => import('@/views/dashboard/DashboardProductsView.vue'), meta:{ requiresAuth:true } },
-    { path:'/dashboard/analytics', component:() => import('@/views/dashboard/DashboardAnalyticsView.vue'), meta:{ requiresAuth:true } },
-    { path:'/dashboard/settings', component:() => import('@/views/dashboard/DashboardSettingsView.vue'), meta:{ requiresAuth:true } },
+    { path:'/dashboard', component:() => import('@/views/dashboard/DashboardHomeView.vue'), meta:{ requiresAuth:true, requiresAdmin:true } },
+    { path:'/dashboard/products', component:() => import('@/views/dashboard/DashboardProductsView.vue'), meta:{ requiresAuth:true, requiresAdmin:true } },
+    { path:'/dashboard/analytics', component:() => import('@/views/dashboard/DashboardAnalyticsView.vue'), meta:{ requiresAuth:true, requiresAdmin:true } },
+    { path:'/dashboard/settings', component:() => import('@/views/dashboard/DashboardSettingsView.vue'), meta:{ requiresAuth:true, requiresAdmin:true } },
     { path:'/:pathMatch(.*)*', component:() => import('@/views/NotFoundView.vue') },
   ],
   scrollBehavior: () => ({ top:0 }),
@@ -25,7 +25,10 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const user = await initializeAuth()
-  if (to.meta.requiresAuth && !user) return { path:'/auth', query:{ redirect:to.fullPath } }
+  if (to.meta.requiresAuth && !user) return { path:'/auth', query:{ redirect:to.fullPath, role:to.meta.requiresAdmin ? 'admin' : 'user' } }
+  if (to.meta.requiresAdmin && user) {
+    if (await getUserRole(user) !== 'admin') return { path:'/', query:{ access:'admin-required' } }
+  }
 })
 
 export default router
