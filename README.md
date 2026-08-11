@@ -9,6 +9,7 @@ This build uses the hosted Supabase and OpenRouter services and includes:
 - current-look add / remove / replace actions
 - shopper photo upload + try-on generation
 - conversational stylist chat with structured product actions
+- vision-grounded styling recommendations based on the current generated look
 - chained generations for complete looks
 - shoes / accessories fidelity handling
 - outfit-logic QA that rejects duplicated, floating or hand-held garments

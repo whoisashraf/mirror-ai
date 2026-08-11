@@ -28,7 +28,7 @@ const schema = {
   required: ['message','recommendations','suggestedActions'],
 }
 
-async function askOpenRouter(messages: Array<{role:string;content:string}>) {
+async function askOpenRouter(messages: Array<{role:string;content:any}>) {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -87,9 +87,25 @@ Deno.serve(async (req) => {
     const { data: history } = await service.from('messages').select('role,content').eq('conversation_id', conversation.id).order('created_at', { ascending: false }).limit(12)
     const orderedHistory = [...(history || [])].reverse()
 
+    let currentLookImage = ''
+    if (body.generationId) {
+      const { data: generation } = await service.from('try_on_generations').select('output_storage_path').eq('id', body.generationId).eq('merchant_id', merchant.id).eq('shopper_session_id', shopperSession.id).eq('status', 'completed').maybeSingle()
+      if (generation?.output_storage_path) {
+        const { data: image } = await service.storage.from('try-on-results').download(generation.output_storage_path)
+        if (image) {
+          const bytes = new Uint8Array(await image.arrayBuffer())
+          let binary = ''
+          for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768))
+          currentLookImage = `data:${image.type || 'image/png'};base64,${btoa(binary)}`
+        }
+      }
+    }
+
     const system = `You are Mirror, an AI fashion shopping assistant embedded inside ${merchant.name}.\nYour job is to help shoppers confidently choose and combine products sold by this merchant.\nOnly recommend products in the provided catalogue and always use exact product IDs.\nThe CURRENT LOOK is the authoritative outfit state. Never claim an item is in the look unless its ID appears there.\nYou may suggest interface actions: add_product, replace_product, remove_product, try_complete_look, or shop_look.\nFor remove_product, productId MUST already be in CURRENT LOOK.\nFor replace_product, productId is the new catalogue item and targetProductId is the CURRENT LOOK item being replaced.\nUse actions only when they clearly match what the shopper asked; the UI will require a tap before changing the look.\nNever make definitive fit or sizing claims when measurements are unavailable. A virtual try-on is only a visual approximation.\nIf discussing skin tone, acknowledge that photo lighting can affect visual assessment. Respect stated budgets.\nBe concise, warm, specific and commercially useful without being pushy. Return only the requested JSON structure.`
+    const groundingRules = `Ground every recommendation in the attached CURRENT LOOK image, current product list, requested occasion and shopper wording. Never suggest visibly incompatible presentation or occasion categories. For example, do not suggest a slip dress, satin blouse or women's evening sandals for a visibly masculine formal or court look unless the shopper explicitly requests that direction. Do not assign a gender identity from appearance alone; use neutral language. If the desired presentation or dress code is genuinely ambiguous and materially affects the answer, ask one short clarifying question and return no recommendations instead of guessing. For court, legal, interview, office or other formal-professional contexts, prioritize conservative tailoring, appropriate coverage, restrained colours and conventional formal footwear unless the shopper requests otherwise.`
     const context = `SELECTED PRODUCT:\n${JSON.stringify(selected)}\n\nCURRENT LOOK (${currentProducts.length} products):\n${JSON.stringify(currentProducts)}\n\nAVAILABLE CATALOGUE (${catalogue?.length || 0} products):\n${JSON.stringify(catalogue)}`
-    const messages = [{ role: 'system', content: system }, { role: 'system', content: context }, ...orderedHistory.map((m:any) => ({ role: m.role, content: m.content })), { role: 'user', content: message }]
+    const userContent = currentLookImage ? [{ type:'text', text:`${message}\n\nInspect the attached CURRENT LOOK before recommending anything.` }, { type:'image_url', image_url:{ url:currentLookImage } }] : message
+    const messages = [{ role: 'system', content: system }, { role: 'system', content: groundingRules }, { role: 'system', content: context }, ...orderedHistory.map((m:any) => ({ role: m.role, content: m.content })), { role: 'user', content: userContent }]
 
     if (!OPENROUTER_KEY) return errorJson('OPENROUTER_API_KEY is not configured.', 503)
     const raw: any = await askOpenRouter(messages)
