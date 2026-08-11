@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '@/views/LandingView.vue'
+import { initializeAuth } from '@/lib/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,14 +13,20 @@ const router = createRouter({
     { path:'/product/:productId', component:() => import('@/views/store/ProductDetailView.vue') },
     { path:'/try-on/:generationId', component:() => import('@/views/TryOnView.vue') },
     { path:'/privacy', component:() => import('@/views/PrivacyView.vue') },
-    { path:'/auth', component:() => import('@/views/AuthView.vue') },
-    { path:'/dashboard', component:() => import('@/views/dashboard/DashboardHomeView.vue') },
-    { path:'/dashboard/products', component:() => import('@/views/dashboard/DashboardProductsView.vue') },
-    { path:'/dashboard/analytics', component:() => import('@/views/dashboard/DashboardAnalyticsView.vue') },
-    { path:'/dashboard/settings', component:() => import('@/views/dashboard/DashboardSettingsView.vue') },
+    { path:'/auth', component:() => import('@/views/AuthView.vue'), meta:{ guestOnly:true } },
+    { path:'/dashboard', component:() => import('@/views/dashboard/DashboardHomeView.vue'), meta:{ requiresAuth:true } },
+    { path:'/dashboard/products', component:() => import('@/views/dashboard/DashboardProductsView.vue'), meta:{ requiresAuth:true } },
+    { path:'/dashboard/analytics', component:() => import('@/views/dashboard/DashboardAnalyticsView.vue'), meta:{ requiresAuth:true } },
+    { path:'/dashboard/settings', component:() => import('@/views/dashboard/DashboardSettingsView.vue'), meta:{ requiresAuth:true } },
     { path:'/:pathMatch(.*)*', component:() => import('@/views/NotFoundView.vue') },
   ],
   scrollBehavior: () => ({ top:0 }),
+})
+
+router.beforeEach(async (to) => {
+  const user = await initializeAuth()
+  if (to.meta.requiresAuth && !user) return { path:'/auth', query:{ redirect:to.fullPath } }
+  if (to.meta.guestOnly && user) return { path:'/dashboard' }
 })
 
 export default router

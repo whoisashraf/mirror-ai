@@ -11,6 +11,7 @@ import { activateTenantScope, applyStorefrontTheme, customTenantHost, storefront
 import { useShopperStore } from '@/stores/shopper'
 import { useTryOnStore } from '@/stores/tryOn'
 import { useChatStore } from '@/stores/chat'
+import { isLookSaved, saveLook as persistLook } from '@/lib/savedLooks'
 import type { Merchant, Product, TryOnCategory } from '@/types'
 
 const route = useRoute()
@@ -38,6 +39,10 @@ watch([currentProductIds, () => merchant.value?.id], async ([ids]) => {
   const loaded = (await Promise.all(ids.map((id) => getProduct(id)))).filter(Boolean) as Product[]
   if (token === loadToken) lookProducts.value = loaded.filter((p) => p.merchant_id === merchant.value?.id)
 }, { immediate:true })
+
+watch(() => tryOn.current?.id, (id) => {
+  saved.value = Boolean(id && isLookSaved(id))
+})
 
 onMounted(async () => {
   shopper.ensureSession()
@@ -115,9 +120,7 @@ async function regenerate() {
 
 function saveLook() {
   if (!tryOn.current) return
-  const items = JSON.parse(localStorage.getItem('mirror_saved_looks') || '[]')
-  items.unshift({ generationId:tryOn.current.id, productIds:currentProductIds.value, imageUrl:tryOn.current.output_image_url, createdAt:new Date().toISOString() })
-  localStorage.setItem('mirror_saved_looks', JSON.stringify(items.slice(0,20)))
+  persistLook(tryOn.current, currentProductIds.value)
   saved.value = true
 }
 

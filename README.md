@@ -88,7 +88,11 @@ npm run dev
 
 ### Merchants
 
-Use normal Supabase Auth.
+Use normal Supabase Auth. Dashboard routes validate the current user before
+navigation, redirect signed-out users back to `/auth`, and preserve the intended
+dashboard URL after sign-in. Supabase RLS remains the authorization boundary for
+merchant records. Sessions persist and refresh through `supabase-js`; signing out
+clears the local Supabase session.
 
 ### Shoppers
 
@@ -108,6 +112,10 @@ All shopper-sensitive operations go through Edge Functions with the guest sessio
 - `track-event`
 
 The token is hashed server-side in `shopper_sessions`.
+
+Completed looks can be saved in the current browser. Saves are validated,
+deduplicated by generation, and capped at 20 entries. Private photo access still
+uses short-lived signed URLs; browser saves do not weaken Storage policies.
 
 ---
 

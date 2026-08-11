@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { getOwnedMerchant } from '@/lib/api'
+import { signOut } from '@/lib/auth'
 const slug=ref('mirror-atelier')
+const router=useRouter()
+const signingOut=ref(false)
 onMounted(async()=>{const m=await getOwnedMerchant();if(m)slug.value=m.slug})
+async function logout(){
+  signingOut.value=true
+  try { await signOut(); await router.replace('/auth') }
+  finally { signingOut.value=false }
+}
 </script>
 <template>
   <aside class="border-b border-line bg-white lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r">
@@ -10,5 +19,6 @@ onMounted(async()=>{const m=await getOwnedMerchant();if(m)slug.value=m.slug})
     <nav class="flex gap-1 overflow-x-auto px-3 pb-3 text-sm lg:block lg:space-y-1">
       <RouterLink v-for="item in [{to:'/dashboard',label:'Overview'},{to:'/dashboard/products',label:'Products'},{to:'/dashboard/analytics',label:'Analytics'},{to:'/dashboard/settings',label:'Settings'}]" :key="item.to" :to="item.to" class="block whitespace-nowrap rounded-xl px-3 py-2.5 text-muted hover:bg-paper hover:text-ink" active-class="!bg-paper !font-semibold !text-ink" exact>{{ item.label }}</RouterLink>
     </nav>
+    <div class="px-3 pb-4"><button class="min-h-10 w-full rounded-xl px-3 text-left text-xs font-semibold text-muted hover:bg-paper hover:text-ink disabled:opacity-50" :disabled="signingOut" @click="logout">{{ signingOut ? 'Signing out…' : 'Sign out' }}</button></div>
   </aside>
 </template>

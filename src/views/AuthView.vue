@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
+import { getOwnedMerchant } from '@/lib/api'
 import AppButton from '@/components/ui/AppButton.vue'
 
 const router = useRouter()
+const route = useRoute()
 const email = ref('')
 const password = ref('')
 const error = ref('')
@@ -13,9 +15,15 @@ const loading = ref(false)
 const creatingAccount = ref(false)
 
 async function claimMerchantAndContinue() {
-  const { error: claimError } = await supabase.rpc('claim_mirror_atelier')
-  if (claimError) throw claimError
-  await router.push('/dashboard')
+  const existing = await getOwnedMerchant()
+  if (!existing) {
+    const { error: claimError } = await supabase.rpc('claim_mirror_atelier')
+    if (claimError) throw claimError
+  }
+  const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/dashboard')
+    ? route.query.redirect
+    : '/dashboard'
+  await router.replace(redirect)
 }
 
 async function submit() {
