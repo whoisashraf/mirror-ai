@@ -29,7 +29,7 @@ async function imageRequest(model: string, prompt: string, references: { data: s
   const response = await fetch('https://openrouter.ai/api/v1/images', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${OPENROUTER_KEY}`, 'Content-Type': 'application/json', 'HTTP-Referer': SITE_URL, 'X-Title': 'Mirror AI' },
-    body: JSON.stringify({ model, prompt, n: 1, resolution: '1024x1280', output_format: 'png', input_references: references.map((image) => ({ type: 'image_url', image_url: { url: dataUrl(image) } })) }),
+    body: JSON.stringify({ model, prompt, n: 1, resolution: '1K', aspect_ratio: '4:5', output_format: 'png', input_references: references.map((image) => ({ type: 'image_url', image_url: { url: dataUrl(image) } })) }),
   })
   const payload = await response.json()
   if (!response.ok) throw new Error(payload?.error?.message || `OpenRouter image request failed (${response.status}).`)
