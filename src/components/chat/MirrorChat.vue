@@ -47,6 +47,7 @@ async function send(text?: string) {
     selectedProductId:props.productId,
     generationId:props.generationId,
     currentProductIds:props.currentProductIds,
+    stylePreference: shopper.stylePreference || 'any',
   })
   await scrollToEnd()
 }

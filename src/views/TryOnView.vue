@@ -56,7 +56,7 @@ onMounted(async () => {
   if (!tryOn.current && !shopper.imageUrl) error.value = 'This try-on photo is no longer available in this browser session.'
   if (!tryOn.current && product.value && merchant.value && shopper.imageUrl) {
     try {
-      await tryOn.start({ merchantId:merchant.value.id, sessionId:shopper.sessionId, shopperImageId:shopper.imageId||undefined, shopperImageUrl:shopper.imageUrl, productIds:[product.value.id], mode:'single' })
+      await tryOn.start({ merchantId:merchant.value.id, sessionId:shopper.sessionId, shopperImageId:shopper.imageId||undefined, shopperImageUrl:shopper.imageUrl, productIds:[product.value.id], mode:'single', stylePreference:shopper.stylePreference || 'any' })
     } catch (e) { error.value = e instanceof Error ? e.message : String(e) }
   }
 })
@@ -75,6 +75,7 @@ async function generate(ids: string[], mode: 'single' | 'complete_look' = 'compl
       productIds:[...new Set(ids)].slice(0, 5),
       mode,
       parentGenerationId:parent,
+      stylePreference:shopper.stylePreference || 'any',
     })
   } catch (e) { error.value = e instanceof Error ? e.message : String(e) }
 }

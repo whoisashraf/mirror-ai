@@ -59,14 +59,17 @@ Deno.serve(async (req) => {
     const message = String(body.message || '').trim().slice(0, 1800)
     const merchantId = String(body.merchantId || '')
     const sessionId = String(body.sessionId || '')
+    const stylePreference = String(body.stylePreference || '')
     if (!merchantId || !sessionId || !message) return errorJson('Missing conversation context.')
+    if (!['menswear','womenswear','any'].includes(stylePreference)) return errorJson('Choose a valid clothing preference.', 422)
     const shopperSession = await requireShopperSession(req, service, merchantId, sessionId)
 
     const { data: merchant, error: merchantError } = await service.from('merchants').select('id,name,currency').eq('id', merchantId).single()
     if (merchantError || !merchant) return errorJson('Merchant not found.', 404)
 
-    const { data: catalogue, error: catalogueError } = await service.from('products').select('id,name,description,price,currency,category,try_on_category,colours,sizes,tags,stock_status').eq('merchant_id', merchant.id).eq('is_active', true).neq('stock_status', 'out_of_stock').limit(100)
+    const { data: allCatalogue, error: catalogueError } = await service.from('products').select('id,name,description,price,currency,category,try_on_category,style_audience,colours,sizes,tags,stock_status').eq('merchant_id', merchant.id).eq('is_active', true).neq('stock_status', 'out_of_stock').limit(100)
     if (catalogueError) throw catalogueError
+    const catalogue = (allCatalogue || []).filter((product:any) => stylePreference === 'any' || product.style_audience === 'unisex' || product.style_audience === stylePreference)
     const validIds = new Set((catalogue || []).map((p:any) => p.id))
 
     const currentProductIds = Array.isArray(body.currentProductIds) ? body.currentProductIds.map(String).filter((id:string) => validIds.has(id)).slice(0, 8) : []

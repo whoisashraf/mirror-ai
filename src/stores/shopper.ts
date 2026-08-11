@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { clearShopperSession, getOrCreateSessionId, getOrCreateSessionToken } from '@/lib/session'
 import { deleteShopperImage, uploadShopperImage } from '@/lib/api'
-import type { PhotoAssessment, TryOnCategory } from '@/types'
+import type { PhotoAssessment, StylePreference, TryOnCategory } from '@/types'
+
+const STYLE_KEY = 'mirror_style_preference'
+function savedStylePreference(): StylePreference | '' {
+  const value = typeof localStorage === 'undefined' ? '' : localStorage.getItem(STYLE_KEY)
+  return value === 'menswear' || value === 'womenswear' || value === 'any' ? value : ''
+}
 
 async function assessPhoto(file: File, category?: TryOnCategory): Promise<PhotoAssessment> {
   let width = 0
@@ -64,11 +70,16 @@ export const useShopperStore = defineStore('shopper', {
     consentAt: '' as string,
     uploading: false,
     photoAssessment: null as PhotoAssessment | null,
+    stylePreference: savedStylePreference(),
   }),
   actions: {
     ensureSession() {
       if (!this.sessionId) this.sessionId = getOrCreateSessionId()
       if (!this.sessionToken) this.sessionToken = getOrCreateSessionToken()
+    },
+    setStylePreference(value: StylePreference) {
+      this.stylePreference = value
+      localStorage.setItem(STYLE_KEY, value)
     },
     async setPhoto(file: File, merchantId: string, category?: TryOnCategory) {
       this.ensureSession()

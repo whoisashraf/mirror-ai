@@ -75,8 +75,10 @@ Deno.serve(async (req) => {
     const sessionId = String(body.sessionId || '')
     const shopperImageId = String(body.shopperImageId || '')
     const generationMode = String(body.generationMode || 'single')
+    const stylePreference = String(body.stylePreference || '')
     const productIds = Array.isArray(body.productIds) ? body.productIds.map(String) : []
     if (!merchantId || !sessionId || !shopperImageId || !productIds.length) return errorJson('Missing generation context.')
+    if (!['menswear','womenswear','any'].includes(stylePreference)) return errorJson('Choose a valid clothing preference.', 422)
     const shopperSession = await requireShopperSession(req, service, merchantId, sessionId)
     await rateLimit(service, 'shopper-hour', `${shopperSession.id}:${sessionId}`, 5, 60 * 60 * 1000)
     await rateLimit(service, 'merchant-day', merchantId, 150, 24 * 60 * 60 * 1000)
@@ -84,9 +86,11 @@ Deno.serve(async (req) => {
     const { data: sourceImage } = await service.from('shopper_images').select('id,storage_path,shopper_session_id').eq('id', shopperImageId).eq('shopper_session_id', shopperSession.id).single()
     if (!sourceImage) return errorJson('Shopper image not found.', 404)
 
-    const { data: products, error: productError } = await service.from('products').select('id,merchant_id,name,description,try_on_category,primary_image_url,reference_images').in('id', productIds).eq('merchant_id', merchantId).eq('is_active', true)
+    const { data: products, error: productError } = await service.from('products').select('id,merchant_id,name,description,try_on_category,style_audience,primary_image_url,reference_images').in('id', productIds).eq('merchant_id', merchantId).eq('is_active', true)
     if (productError) throw productError
     if (!products || products.length !== productIds.length) return errorJson('One or more products are unavailable.')
+    const incompatible = products.filter((product:any) => stylePreference !== 'any' && product.style_audience !== 'unisex' && product.style_audience !== stylePreference)
+    if (incompatible.length) return errorJson('One or more products do not match your selected clothing preference.', 422, { productIds: incompatible.map((product:any) => product.id) })
 
     let parent: any = null
     if (body.parentGenerationId) {

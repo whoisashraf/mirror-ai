@@ -1,6 +1,6 @@
 import { getShopperSession } from '@/lib/session'
 import { supabase, supabasePublishableKey, supabaseUrl } from '@/lib/supabase'
-import type { AnalyticsSummary, Merchant, MirrorReply, Product, TryOnGeneration } from '@/types'
+import type { AnalyticsSummary, Merchant, MirrorReply, Product, StylePreference, TryOnGeneration } from '@/types'
 
 async function fileToBase64(file: File) {
   const buffer = await file.arrayBuffer()
@@ -111,18 +111,19 @@ export async function deleteShopperImage(imageId: string, storagePath: string, m
   await invokeShopperFunction('delete-shopper-image', { merchantId, imageId, storagePath }, true)
 }
 
-export async function createTryOn(params: { merchantId: string; sessionId: string; shopperImageId?: string; shopperImageUrl?: string; productIds: string[]; mode: 'single' | 'complete_look'; parentGenerationId?: string }): Promise<TryOnGeneration> {
+export async function createTryOn(params: { merchantId: string; sessionId: string; shopperImageId?: string; shopperImageUrl?: string; productIds: string[]; mode: 'single' | 'complete_look'; parentGenerationId?: string; stylePreference: StylePreference }): Promise<TryOnGeneration> {
   const data = await invokeShopperFunction<{ generation: TryOnGeneration }>('generate-try-on', {
     merchantId: params.merchantId,
     shopperImageId: params.shopperImageId,
     productIds: params.productIds,
     generationMode: params.mode,
     parentGenerationId: params.parentGenerationId,
+    stylePreference: params.stylePreference,
   }, true)
   return data.generation
 }
 
-export async function chatWithMirror(params: { conversationId?: string; merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; currentProductIds?: string[] }): Promise<{ conversationId: string; reply: MirrorReply }> {
+export async function chatWithMirror(params: { conversationId?: string; merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; currentProductIds?: string[]; stylePreference: StylePreference }): Promise<{ conversationId: string; reply: MirrorReply }> {
   return invokeShopperFunction('chat-with-mirror', params, true)
 }
 

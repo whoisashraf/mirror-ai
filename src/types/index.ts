@@ -1,4 +1,6 @@
 export type UUID = string
+export type StyleAudience = 'menswear' | 'womenswear' | 'unisex'
+export type StylePreference = 'menswear' | 'womenswear' | 'any'
 
 export type TryOnCategory =
   | 'top'
@@ -60,6 +62,7 @@ export interface Product {
   currency: string
   category: string
   try_on_category?: TryOnCategory
+  style_audience?: StyleAudience
   primary_image_url: string
   reference_images?: ProductReferenceImage[]
   visual_description?: string | null
