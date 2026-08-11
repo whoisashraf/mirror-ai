@@ -11,6 +11,17 @@ async function fileToBase64(file: File) {
   return btoa(binary)
 }
 
+function errorMessage(value: unknown, fallback: string): string {
+  if (typeof value === 'string') return value
+  if (value instanceof Error) return value.message
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    if (typeof record.message === 'string') return record.message
+    try { return JSON.stringify(value) } catch { /* fall through */ }
+  }
+  return fallback
+}
+
 async function invokeShopperFunction<T>(name: string, body: Record<string, unknown>) {
   if (!supabaseUrl || !supabasePublishableKey) throw new Error('Supabase is not configured.')
   const { id: sessionId, token } = getShopperSession()
@@ -25,7 +36,7 @@ async function invokeShopperFunction<T>(name: string, body: Record<string, unkno
     body: JSON.stringify({ ...body, sessionId }),
   })
   const payload = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(payload?.details || payload?.error || `Function ${name} failed.`)
+  if (!response.ok) throw new Error(errorMessage(payload?.details ?? payload?.error, `Function ${name} failed.`))
   return payload as T
 }
 

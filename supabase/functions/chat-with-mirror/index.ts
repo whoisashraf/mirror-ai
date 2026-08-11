@@ -6,6 +6,18 @@ import { requireShopperSession } from '../_shared/session.ts'
 const OPENROUTER_KEY = Deno.env.get('OPENROUTER_API_KEY') || ''
 const OPENROUTER_MODEL = Deno.env.get('OPENROUTER_CHAT_MODEL') || 'google/gemini-2.5-flash'
 const actionTypes = ['try_complete_look','add_product','replace_product','remove_product','shop_look']
+
+function errorMessage(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value instanceof Error) return value.message
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    if (typeof record.message === 'string') return record.message
+    try { return JSON.stringify(value) } catch { /* fall through */ }
+  }
+  return 'Unknown error'
+}
+
 const schema = {
   type: 'object', additionalProperties: false,
   properties: {
@@ -33,7 +45,7 @@ async function askOpenRouter(messages: Array<{role:string;content:string}>) {
     }),
   })
   const payload = await response.json()
-  if (!response.ok) throw new Error(payload?.error?.message || `OpenRouter failed (${response.status}).`)
+  if (!response.ok) throw new Error(errorMessage(payload?.error?.message ?? payload?.error ?? `OpenRouter failed (${response.status}).`))
   return JSON.parse(payload?.choices?.[0]?.message?.content || '{}')
 }
 
@@ -102,17 +114,17 @@ Deno.serve(async (req) => {
     const reply = { message: String(raw.message || 'I can help you style this from the available catalogue.').slice(0, 1600), recommendations, suggestedActions }
 
     const { error: msgError } = await service.from('messages').insert([
-      { conversation_id: conversation.id, role: 'user', content: message },
+      { conversation_id: conversation.id, role: 'user', content: message, structured_data: {} },
       { conversation_id: conversation.id, role: 'assistant', content: reply.message, structured_data: { recommendations: reply.recommendations, suggestedActions: reply.suggestedActions } },
     ])
-    if (msgError) throw msgError
+    if (msgError) throw new Error(errorMessage(msgError))
 
     if (recommendations.length) {
       await service.from('analytics_events').insert({ merchant_id: merchant.id, session_id: sessionId, shopper_session_id: shopperSession.id, event_type: 'recommendation_shown', product_id: body.selectedProductId || currentProductIds[0] || null, generation_id: body.generationId || null, conversation_id: conversation.id, metadata: { recommendedProductIds: recommendations.map((r:any) => r.productId), currentProductIds } })
     }
     return json({ conversationId: conversation.id, reply })
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const message = errorMessage(error)
     if (message.startsWith('SESSION_')) return errorJson('Invalid shopper session.', 401, message)
     console.error(error)
     return errorJson('Mirror could not answer right now.', 500, message)

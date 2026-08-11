@@ -15,14 +15,15 @@ function classifyIntent(message: string) {
 }
 
 export const useChatStore = defineStore('chat', {
-  state: () => ({ conversationId: '' as string, messages: [] as ChatMessage[], sending: false }),
+  state: () => ({ conversationId: '' as string, messages: [] as ChatMessage[], sending: false, error: '' }),
   actions: {
-    reset() { this.conversationId = ''; this.messages = []; this.sending = false },
+    reset() { this.conversationId = ''; this.messages = []; this.sending = false; this.error = '' },
     async send(params: { merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; currentProductIds?: string[] }) {
       if (!params.message.trim() || this.sending) return
       const userMessage: ChatMessage = { id: crypto.randomUUID(), role:'user', content:params.message.trim(), createdAt:new Date().toISOString() }
       this.messages.push(userMessage)
       this.sending = true
+      this.error = ''
       const intent = classifyIntent(userMessage.content)
       if (!this.conversationId) await trackEvent('chat_started', { merchantId: params.merchantId, sessionId: params.sessionId, productId: params.selectedProductId })
       await trackEvent('chat_message_sent', { merchantId: params.merchantId, sessionId: params.sessionId, productId: params.selectedProductId, generationId:params.generationId, metadata:{intent,currentProductIds:params.currentProductIds || []} })
@@ -35,6 +36,9 @@ export const useChatStore = defineStore('chat', {
           createdAt:new Date().toISOString(),
         })
         return result.reply
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Mirror could not answer right now.'
+        return undefined
       } finally { this.sending = false }
     },
   },
