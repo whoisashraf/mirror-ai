@@ -2,6 +2,7 @@ services:
   - type: web
     runtime: static
     name: mirror-ai
+    repo: https://github.com/whoisashraf/mirror-ai
     branch: main
     autoDeployTrigger: commit
     buildCommand: pnpm install --frozen-lockfile && pnpm run build
