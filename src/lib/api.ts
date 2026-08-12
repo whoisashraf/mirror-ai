@@ -1,6 +1,6 @@
 import { getShopperSession } from '@/lib/session'
 import { supabase, supabasePublishableKey, supabaseUrl } from '@/lib/supabase'
-import type { AnalyticsSummary, Merchant, MirrorReply, Product, StylePreference, TryOnGeneration } from '@/types'
+import type { AnalyticsSummary, Merchant, MirrorReply, Product, PublicPilotSummary, StylePreference, TryOnGeneration } from '@/types'
 
 async function fileToBase64(file: File) {
   const buffer = await file.arrayBuffer()
@@ -83,8 +83,10 @@ export async function getOwnedMerchant(): Promise<Merchant | null> {
   return merchant as Merchant | null
 }
 
-export async function getProducts(merchantId: string): Promise<Product[]> {
-  const { data, error } = await supabase.from('products').select('*').eq('merchant_id', merchantId).eq('is_active', true).order('created_at')
+export async function getProducts(merchantId: string, includeInactive = false): Promise<Product[]> {
+  let query = supabase.from('products').select('*').eq('merchant_id', merchantId)
+  if (!includeInactive) query = query.eq('is_active', true)
+  const { data, error } = await query.order('created_at')
   if (error) throw error
   return (data ?? []) as Product[]
 }
@@ -166,6 +168,30 @@ export async function archiveProduct(merchantId: string, id: string) {
   const { error } = await supabase.from('products').update({ is_active: false }).eq('id', id).eq('merchant_id', merchantId); if (error) throw error
 }
 
+export async function restoreProduct(merchantId: string, id: string) {
+  const { error } = await supabase.from('products').update({ is_active:true }).eq('id', id).eq('merchant_id', merchantId); if (error) throw error
+}
+
+export async function uploadProductAsset(file: File, merchantId: string) {
+  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.')
+  if (file.size > 8 * 1024 * 1024) throw new Error('Use an image under 8 MB.')
+  const safeName = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-|-$/g, '') || 'product.jpg'
+  const path = `${merchantId}/${crypto.randomUUID()}-${safeName}`
+  const { error } = await supabase.storage.from('product-images').upload(path, file, { contentType:file.type, upsert:false })
+  if (error) throw error
+  return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl
+}
+
+export async function uploadMerchantAsset(file: File, merchantId: string, kind: 'logo'|'hero') {
+  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.')
+  if (file.size > 8 * 1024 * 1024) throw new Error('Use an image under 8 MB.')
+  const extension = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+  const path = `${merchantId}/${kind}-${crypto.randomUUID()}.${extension}`
+  const { error } = await supabase.storage.from('merchant-assets').upload(path, file, { contentType:file.type, upsert:false })
+  if (error) throw error
+  return supabase.storage.from('merchant-assets').getPublicUrl(path).data.publicUrl
+}
+
 export async function deleteProduct(merchantId: string, id: string) {
   const { error } = await supabase.from('products').delete().eq('id', id).eq('merchant_id', merchantId); if (error) throw error
 }
@@ -178,4 +204,8 @@ export async function getAnalytics(merchantId: string, days = 30): Promise<Analy
   const { data, error } = await supabase.functions.invoke('merchant-analytics', { body: { merchantId, days } })
   if (error) throw error
   return data as AnalyticsSummary
+}
+
+export async function getPublicPilotMetrics(): Promise<PublicPilotSummary> {
+  return invokeShopperFunction<PublicPilotSummary>('public-pilot-metrics', {})
 }

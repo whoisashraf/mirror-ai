@@ -64,7 +64,12 @@ async function send(text?: string) {
 }
 
 function changeCollection(event: Event) {
-  const value = (event.target as HTMLSelectElement).value as StylePreference
+  const select = event.target as HTMLSelectElement
+  const value = select.value as StylePreference
+  if (chat.messages.length && !window.confirm('Change collection and start a new stylist conversation? Your current generated look will stay visible.')) {
+    select.value = selectedCollection.value
+    return
+  }
   shopper.setStylePreference(value)
   chat.reset()
 }
@@ -105,7 +110,7 @@ function actionLabel(action: string | MirrorAction) {
       <div class="flex items-center justify-between gap-3"><div class="flex min-w-0 items-center gap-3"><div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--store-accent)] text-xs font-bold text-white">{{ name.slice(0,1).toUpperCase() }}</div><div class="min-w-0"><h2 class="text-sm font-semibold">{{ name }}</h2><p class="truncate text-xs text-muted">Visual styling from this store’s catalogue</p></div></div><label class="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted">Collection<select :value="selectedCollection" class="mt-1 block min-h-9 rounded-lg border border-line bg-white px-2 text-[10px] font-semibold capitalize text-ink" @change="changeCollection"><option value="womenswear">Womenswear</option><option value="menswear">Menswear</option><option value="any">Any</option></select></label></div>
     </div>
     <div ref="scroller" class="min-h-52 flex-1 space-y-4 overflow-y-auto p-4">
-      <div v-if="!chat.messages.length"><p class="text-sm leading-6 text-muted">Ask about colour, occasion, styling, modest options or a budget. Your current generated look stays visible while the conversation changes it.</p><div class="mt-4 flex flex-wrap gap-2"><button v-for="p in prompts" :key="p" class="focus-ring rounded-full border border-line px-3 py-2 text-left text-xs hover:border-ink" @click="send(p)">{{ p }}</button></div></div>
+      <div v-if="!chat.messages.length"><p class="text-sm leading-6 text-muted">Ask about colour, occasion, styling, modest options or a budget. Your current look stays visible; Mirror changes it only after you choose products and generate.</p><div class="mt-4 flex flex-wrap gap-2"><button v-for="p in prompts" :key="p" class="focus-ring rounded-full border border-line px-3 py-2 text-left text-xs hover:border-ink" @click="send(p)">{{ p }}</button></div></div>
       <template v-for="message in visibleMessages" :key="message.id">
         <div :class="message.role === 'user' ? 'ml-auto bg-ink text-white' : 'mr-auto bg-paper text-ink'" class="max-w-[78%] rounded-[1.2rem] px-4 py-2.5 text-sm leading-6">{{ message.content }}</div>
         <div v-if="message.id===latestRecommendationMessageId && message.recommendations?.length" class="grid gap-2 pb-1 xl:grid-cols-2">
@@ -134,6 +139,6 @@ function actionLabel(action: string | MirrorAction) {
       <div v-if="chat.sending" class="w-fit rounded-full bg-paper px-4 py-2 text-xs text-muted">{{ name }} is thinking…</div>
       <p v-if="chat.error" role="alert" class="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{{ chat.error }}</p>
     </div>
-    <form class="flex shrink-0 gap-2 p-4" @submit.prevent="send()"><input v-model="input" class="focus-ring min-h-12 flex-1 rounded-full border border-line bg-paper px-4 text-sm outline-none" :placeholder="`Ask ${name} about this look…`" /><button class="focus-ring grid h-12 w-12 place-items-center rounded-full bg-[var(--store-accent)] text-white disabled:opacity-40" :disabled="chat.sending || !input.trim()">↑</button></form>
+    <form class="flex shrink-0 gap-2 p-4" @submit.prevent="send()"><input v-model="input" class="focus-ring min-h-12 flex-1 rounded-full border border-line bg-paper px-4 text-sm outline-none" :placeholder="`Ask ${name} about this look…`" /><button aria-label="Send message" class="focus-ring grid h-12 w-12 place-items-center rounded-full bg-[var(--store-accent)] text-white disabled:opacity-40" :disabled="chat.sending || !input.trim()">↑</button></form>
   </section>
 </template>

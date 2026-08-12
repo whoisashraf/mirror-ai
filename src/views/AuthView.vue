@@ -24,10 +24,7 @@ const backTo = computed(() => {
 async function continueAfterAuth() {
   if (!shopperFlow.value) {
     const existing = await getOwnedMerchant()
-    if (!existing) {
-      const { error: claimError } = await supabase.rpc('claim_mirror_atelier')
-      if (claimError) throw claimError
-    }
+    if (!existing) throw new Error('This account is not assigned to a merchant store.')
   }
   await router.replace(redirect.value)
 }
@@ -80,7 +77,7 @@ async function submit() {
       <p class="text-xs font-semibold uppercase tracking-[.2em] text-muted">{{ shopperFlow ? 'Shopper access' : 'Merchant access' }}</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight">{{ creatingAccount ? 'Create your account' : 'Sign in to Mirror' }}</h1>
       <p class="mt-2 text-sm leading-6 text-muted">
-        {{ shopperFlow ? 'Sign in or create an account before uploading a photo and starting your private try-on.' : creatingAccount ? 'Create the first merchant account for Mirror Atelier.' : 'Use your merchant email and password.' }}
+        {{ shopperFlow ? 'Sign in or create an account before uploading a photo and starting your private try-on.' : 'Use the merchant account assigned to your store.' }}
       </p>
       <label class="mt-7 block text-xs font-medium">Email
         <input v-model="email" type="email" autocomplete="email" required class="mt-2 min-h-12 w-full rounded-xl border border-line px-3 outline-none focus:border-ink" placeholder="you@store.com" />
@@ -93,7 +90,7 @@ async function submit() {
       <AppButton class="mt-5 w-full" type="submit" :disabled="loading">
         {{ loading ? 'Please wait…' : creatingAccount ? 'Create account' : 'Sign in' }}
       </AppButton>
-      <button type="button" class="mt-4 w-full text-center text-xs font-semibold underline" @click="creatingAccount=!creatingAccount;error='';notice=''">
+      <button v-if="shopperFlow" type="button" class="mt-4 w-full text-center text-xs font-semibold underline" @click="creatingAccount=!creatingAccount;error='';notice=''">
         {{ creatingAccount ? 'Already have an account? Sign in' : 'No account yet? Create one' }}
       </button>
     </form>

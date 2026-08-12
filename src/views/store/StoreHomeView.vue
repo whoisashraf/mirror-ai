@@ -19,25 +19,31 @@ const merchant = ref<Merchant | null>(null)
 const products = ref<Product[]>([])
 const category = ref('All')
 const loading = ref(true)
+const error = ref('')
 const categories = computed(() => ['All', ...new Set(products.value.map((p) => p.category))])
 const filtered = computed(() => category.value === 'All' ? products.value : products.value.filter((p) => p.category === category.value))
 const cfg = computed(() => merchant.value?.storefront_config || {})
 
 onMounted(async () => {
-  shopper.ensureSession()
-  merchant.value = await resolveMerchant(tenantSlugFromRoute(route.params.slug), customTenantHost())
-  if (merchant.value) {
-    if (activateTenantScope(merchant.value.id)) {
-      chat.reset()
-      tryOn.reset()
-      await shopper.clearPhoto().catch(() => undefined)
-      shopper.rotateSession()
+  try {
+    shopper.ensureSession()
+    merchant.value = await resolveMerchant(tenantSlugFromRoute(route.params.slug), customTenantHost())
+    if (merchant.value) {
+      if (activateTenantScope(merchant.value.id)) {
+        chat.reset()
+        tryOn.reset()
+        await shopper.clearPhoto().catch(() => undefined)
+        shopper.rotateSession()
+      }
+      applyStorefrontTheme(merchant.value)
+      products.value = await getProducts(merchant.value.id)
+      await trackEvent('store_view', { merchantId: merchant.value.id, sessionId: shopper.sessionId })
     }
-    applyStorefrontTheme(merchant.value)
-    products.value = await getProducts(merchant.value.id)
-    await trackEvent('store_view', { merchantId: merchant.value.id, sessionId: shopper.sessionId })
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : 'The catalogue could not be loaded.'
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 })
 </script>
 <template>
@@ -49,16 +55,18 @@ onMounted(async () => {
           <p class="text-xs font-semibold uppercase tracking-[.2em] opacity-60">{{ merchant.name }}</p>
           <h1 class="mt-3 max-w-3xl text-4xl font-semibold tracking-[-.045em] sm:text-6xl">{{ cfg.heroTitle || 'Find the look. Then see yourself in it.' }}</h1>
           <p class="mt-5 max-w-2xl text-sm leading-6 opacity-65 sm:text-base">{{ cfg.heroCopy || merchant.description }}</p>
-          <div class="mt-7 inline-flex rounded-full bg-[var(--store-accent)] px-4 py-2 text-xs font-semibold text-white">{{ cfg.tryOnLabel || 'Try-on available across the collection' }}</div>
+          <div class="mt-7 inline-flex rounded-full bg-[var(--store-accent)] px-4 py-2 text-xs font-semibold text-white">AI try-on available across the collection</div>
         </div>
         <div v-if="cfg.heroImageUrl" class="overflow-hidden rounded-[1.8rem] bg-cream"><img :src="cfg.heroImageUrl" :alt="merchant.name" class="aspect-[4/3] h-full w-full object-cover" /></div>
       </section>
       <div class="hide-scrollbar mb-6 flex gap-2 overflow-x-auto">
         <button v-for="c in categories" :key="c" class="rounded-full border px-4 py-2 text-xs font-medium" :class="category===c?'border-transparent bg-[var(--store-accent)] text-white':'border-black/15 bg-transparent'" @click="category=c">{{ c }}</button>
       </div>
+      <div v-if="error" role="alert" class="mb-6 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-red-700">{{error}}</div>
       <div v-if="loading" class="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 lg:grid-cols-4"><div v-for="i in 8" :key="i" class="aspect-[4/5] animate-pulse rounded-[1.4rem] bg-cream"></div></div>
       <div v-else-if="filtered.length" class="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 lg:grid-cols-4"><ProductCard v-for="p in filtered" :key="p.id" :product="p" :merchant="merchant" /></div>
       <div v-else class="rounded-[1.5rem] border border-black/10 bg-white p-8 text-center"><h2 class="font-semibold">No products here yet</h2><p class="mt-2 text-sm opacity-60">This store has not published products in this category.</p></div>
+      <footer class="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-6 text-[11px] opacity-60"><p>AI styling is a visual guide, not a fit guarantee.</p><div class="flex gap-4"><a v-if="merchant.website_url" :href="merchant.website_url" target="_blank" rel="noopener noreferrer" class="font-semibold">Retailer website ↗</a><RouterLink :to="{path:'/privacy',query:{return:route.fullPath}}" class="font-semibold">Photo privacy</RouterLink></div></footer>
     </main>
   </div>
   <div v-else-if="loading" class="grid min-h-screen place-items-center p-8 text-sm text-muted">Loading store…</div>

@@ -15,8 +15,10 @@ This build uses the hosted Supabase and OpenRouter services and includes:
 - outfit-logic QA that rejects duplicated, floating or hand-held garments
 - per-product fidelity gates that reject outputs which do not match merchant references
 - merchant analytics funnel
+- public, aggregate pilot evidence at `/pilot`
+- direct merchant image uploads and catalogue CSV import
 - **authenticated shoppers with private browser-scoped fitting sessions**
-- **OpenRouter-only AI backend**
+- **Gemini models accessed through the server-side OpenRouter integration**
 
 ---
 
@@ -52,8 +54,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<local publishable or anon-compatible key>
 ### 3. Start Supabase locally
 
 ```bash
-supabase start
-supabase db reset
+pnpx supabase start
+pnpx supabase db reset
 ```
 
 This applies all migrations and seeds the demo merchant/catalogue.
@@ -76,7 +78,7 @@ SITE_URL=http://localhost:5173
 Then run:
 
 ```bash
-supabase functions serve --env-file supabase/functions/.env.example
+pnpx supabase functions serve --env-file supabase/functions/.env.example
 ```
 
 ### 5. Start frontend
@@ -131,6 +133,7 @@ the browser session and clears private photo/look state before the new profile l
 Completed looks can be saved in the current browser. Saves are validated,
 deduplicated by generation, and capped at 20 entries. Private photo access still
 uses short-lived signed URLs; browser saves do not weaken Storage policies.
+Removing the base photo also removes generated result files linked to that photo.
 
 ---
 
@@ -149,12 +152,12 @@ keep JWT verification enabled:
 Example:
 
 ```bash
-supabase functions deploy upload-shopper-image
-supabase functions deploy delete-shopper-image
-supabase functions deploy get-base-photo-url
-supabase functions deploy generate-try-on
-supabase functions deploy get-saved-look-urls
-supabase functions deploy chat-with-mirror
+pnpx supabase functions deploy upload-shopper-image
+pnpx supabase functions deploy delete-shopper-image
+pnpx supabase functions deploy get-base-photo-url
+pnpx supabase functions deploy generate-try-on
+pnpx supabase functions deploy get-saved-look-urls
+pnpx supabase functions deploy chat-with-mirror
 ```
 
 `track-event` also keeps gateway JWT verification enabled, but accepts the
@@ -167,7 +170,18 @@ This should keep JWT verification enabled:
 - `merchant-analytics`
 
 ```bash
-supabase functions deploy merchant-analytics
+pnpx supabase functions deploy merchant-analytics
+```
+
+### Public pilot evidence
+
+`public-pilot-metrics` exposes only aggregate, 30-day metrics for the fixed demo
+merchant. It accepts no merchant identifier and returns no shopper-level data.
+It is intentionally public so judges and prospective retailers can verify the
+pilot without a dashboard account:
+
+```bash
+pnpx supabase functions deploy public-pilot-metrics --no-verify-jwt
 ```
 
 ---
@@ -194,6 +208,7 @@ And ~16 demo products across:
 Hosted style:
 
 ```text
+/pilot
 /store/:slug
 /store/:slug/product/:productId
 /try-on/:generationId
@@ -231,8 +246,8 @@ This repo now expects:
 
 ## Recommended first local run
 
-1. `supabase start`
-2. `supabase db reset`
+1. `pnpx supabase start`
+2. `pnpx supabase db reset`
 3. add OpenRouter secret env
 4. serve functions
 5. `npm install`

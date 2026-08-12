@@ -6,6 +6,7 @@ import { trackEvent } from '@/lib/api'
 import AppButton from '@/components/ui/AppButton.vue'
 import type { TryOnCategory } from '@/types'
 import { initializeAuth } from '@/lib/auth'
+import { clearSavedLooks } from '@/lib/savedLooks'
 
 const props = defineProps<{ merchantId?: string; productId?: string; tryOnCategory?: TryOnCategory; continueLabel?: string; continueDescription?: string }>()
 const emit = defineEmits<{ continue: [] }>()
@@ -15,6 +16,7 @@ const router = useRouter()
 const consent = ref(false)
 const input = ref<HTMLInputElement | null>(null)
 const error = ref('')
+const removing = ref(false)
 watch(() => shopper.consentAt, (value) => { if (value) consent.value = true }, { immediate:true })
 const photoGuidance = computed(() => {
   if (props.tryOnCategory === 'shoes') return 'Use a clear full-body photo with both feet visible. Avoid cropped legs or shoes hidden behind objects.'
@@ -39,6 +41,15 @@ async function handleFile(file?: File) {
   if (props.merchantId) await trackEvent('photo_uploaded', { merchantId:props.merchantId, sessionId:shopper.sessionId, productId:props.productId, metadata:{ tryOnCategory:props.tryOnCategory, assessment:shopper.photoAssessment } })
 }
 
+async function removePhoto() {
+  if (!window.confirm('Remove this base photo? Future try-ons will require another photo.')) return
+  removing.value = true
+  error.value = ''
+  try { await shopper.clearPhoto(props.merchantId); clearSavedLooks() }
+  catch (caught) { error.value = caught instanceof Error ? caught.message : 'Your photo could not be removed.' }
+  finally { removing.value = false }
+}
+
 </script>
 <template>
   <section class="rounded-[1.5rem] border border-line bg-white p-4 sm:p-5">
@@ -60,7 +71,7 @@ async function handleFile(file?: File) {
         <p class="mt-2 text-[10px] leading-4 text-muted">This is a basic framing/resolution check. Mirror still relies on the image model for visual understanding.</p>
       </div>
       <div class="rounded-[1.1rem] border border-line bg-paper p-3 text-xs leading-5"><p class="font-semibold">Active base photo ✓</p><p class="text-muted">Mirror will use this photo automatically for new try-ons in this store.</p></div>
-      <div class="flex gap-2"><AppButton variant="outline" class="flex-1" @click="input?.click()">Use another photo</AppButton><AppButton variant="ghost" @click="shopper.clearPhoto(props.merchantId)">Remove photo</AppButton></div>
+      <div class="flex gap-2"><AppButton variant="outline" class="flex-1" :disabled="removing" @click="input?.click()">Use another photo</AppButton><AppButton variant="ghost" :disabled="removing" @click="removePhoto">{{removing?'Removing…':'Remove photo'}}</AppButton></div>
     </div>
     <div v-else class="py-6 text-center sm:py-10">
       <div class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-cream text-xl">↥</div>

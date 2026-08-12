@@ -182,3 +182,16 @@ export interface AnalyticsSummary {
   period: { days: number; since: string; until: string }
   generatedAt: string
 }
+
+export interface PublicPilotSummary {
+  merchantName: string
+  productCount: number
+  shopperSessions: number
+  tryOns: number
+  conversations: number
+  checkoutClicks: number
+  tryOnCompletionRate: number
+  funnel: Array<{ label: string; value: number; conversionFromPrevious: number | null }>
+  period: { days: number; since: string; until: string }
+  generatedAt: string
+}

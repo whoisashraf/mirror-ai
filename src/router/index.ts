@@ -6,6 +6,7 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path:'/', component:LandingView },
+    { path:'/pilot', component:() => import('@/views/PublicPilotView.vue') },
     { path:'/store/:slug', component:() => import('@/views/store/StoreHomeView.vue') },
     { path:'/store/:slug/product/:productId', component:() => import('@/views/store/ProductDetailView.vue') },
     { path:'/store/:slug/settings/photo', component:() => import('@/views/store/ShopperPhotoSettingsView.vue'), meta:{ requiresAuth:true } },
