@@ -1,11 +1,5 @@
 import type { Merchant } from '@/types'
-
-const PLATFORM_HOSTS = new Set([
-  'localhost',
-  '127.0.0.1',
-  'mirror.ai',
-  'www.mirror.ai',
-])
+import { isPlatformHost } from '@/lib/platform-host'
 
 export function storefrontPath(merchant: Merchant, path = '') {
   const clean = path.startsWith('/') ? path : `/${path}`
@@ -21,7 +15,7 @@ export function tenantSlugFromRoute(routeSlug?: string | string[] | null) {
 export function customTenantHost() {
   if (typeof window === 'undefined') return null
   const host = window.location.hostname.toLowerCase()
-  return PLATFORM_HOSTS.has(host) ? null : host
+  return isPlatformHost(host) ? null : host
 }
 
 export function applyStorefrontTheme(merchant: Merchant) {
