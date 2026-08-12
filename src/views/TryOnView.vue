@@ -57,7 +57,7 @@ onMounted(async () => {
   const pid = route.query.product as string
   if (pid) product.value = await getProduct(pid)
   if (merchant.value) {
-    if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); await shopper.clearPhoto().catch(() => undefined); shopper.rotateSession() }
+    if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); shopper.clearLocalPhoto(); shopper.rotateSession() }
     applyStorefrontTheme(merchant.value)
     if (await initializeAuth()) await shopper.restoreBasePhoto(merchant.value.id)
     await refreshSavedLooks()

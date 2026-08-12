@@ -1,7 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
 import { requireUser, serviceClient } from '../_shared/auth.ts'
-import { requireShopperSession } from '../_shared/session.ts'
+import { findOwnedShopperImage, requireShopperSession } from '../_shared/session.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -14,16 +14,12 @@ Deno.serve(async (req) => {
     const merchantId = String(body.merchantId || '')
     const sessionId = String(body.sessionId || '')
     const imageId = String(body.imageId || '')
-    if (!merchantId || !sessionId || !imageId) return errorJson('Missing base-photo context.', 422)
+    if (!merchantId || !sessionId) return errorJson('Missing base-photo context.', 422)
 
-    const session = await requireShopperSession(req, service, merchantId, sessionId, user.id)
-    const { data: image, error } = await service
-      .from('shopper_images')
-      .select('id,storage_path,consent_at')
-      .eq('id', imageId)
-      .eq('shopper_session_id', session.id)
-      .single()
-    if (error || !image) return errorJson('Base photo not found.', 404)
+    await requireShopperSession(req, service, merchantId, sessionId, user.id)
+    let image = await findOwnedShopperImage(service, merchantId, user.id, imageId || undefined)
+    if (!image && imageId) image = await findOwnedShopperImage(service, merchantId, user.id)
+    if (!image) return errorJson('Base photo not found.', 404)
 
     const { data: signed, error: signedError } = await service.storage
       .from('shopper-images')

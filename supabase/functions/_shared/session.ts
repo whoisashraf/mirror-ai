@@ -30,3 +30,30 @@ export async function requireShopperSession(req: Request, service: SupabaseClien
   await service.from('shopper_sessions').update({ last_seen_at: new Date().toISOString(), expires_at: expiresAt }).eq('id', existing.id)
   return existing
 }
+
+export async function findOwnedShopperImage(
+  service: SupabaseClient,
+  merchantId: string,
+  userId: string,
+  imageId?: string,
+) {
+  const { data: sessions, error: sessionError } = await service
+    .from('shopper_sessions')
+    .select('id')
+    .eq('merchant_id', merchantId)
+    .eq('auth_user_id', userId)
+  if (sessionError) throw sessionError
+  const sessionIds = (sessions || []).map((session) => session.id)
+  if (!sessionIds.length) return null
+
+  let query = service
+    .from('shopper_images')
+    .select('id,storage_path,shopper_session_id,consent_at,created_at')
+    .in('shopper_session_id', sessionIds)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (imageId) query = query.eq('id', imageId)
+  const { data, error } = await query.maybeSingle()
+  if (error) throw error
+  return data
+}

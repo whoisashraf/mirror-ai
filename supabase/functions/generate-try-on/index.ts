@@ -1,7 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
 import { requireUser, serviceClient } from '../_shared/auth.ts'
-import { requireShopperSession } from '../_shared/session.ts'
+import { findOwnedShopperImage, requireShopperSession } from '../_shared/session.ts'
 
 const OPENROUTER_KEY = Deno.env.get('OPENROUTER_API_KEY') || ''
 const IMAGE_MODEL = Deno.env.get('OPENROUTER_IMAGE_MODEL') || 'google/gemini-3.1-flash-image'
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     await rateLimit(service, 'shopper-hour', `${shopperSession.id}:${sessionId}`, 5, 60 * 60 * 1000)
     await rateLimit(service, 'merchant-day', merchantId, 150, 24 * 60 * 60 * 1000)
 
-    const { data: sourceImage } = await service.from('shopper_images').select('id,storage_path,shopper_session_id').eq('id', shopperImageId).eq('shopper_session_id', shopperSession.id).single()
+    const sourceImage = await findOwnedShopperImage(service, merchantId, user.id, shopperImageId)
     if (!sourceImage) return errorJson('Shopper image not found.', 404)
 
     const { data: products, error: productError } = await service.from('products').select('id,merchant_id,name,description,try_on_category,style_audience,primary_image_url,reference_images').in('id', productIds).eq('merchant_id', merchantId).eq('is_active', true)

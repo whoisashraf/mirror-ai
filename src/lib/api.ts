@@ -109,7 +109,7 @@ export async function uploadShopperImage(file: File, merchantId: string, consent
   return { id: data.image.id, url: data.image.signedUrl, storagePath: data.image.storagePath, consentAt, sessionId }
 }
 
-export async function getBasePhotoUrl(merchantId: string, imageId: string) {
+export async function getBasePhotoUrl(merchantId: string, imageId?: string) {
   const data = await invokeShopperFunction<{ image: { id: string; signedUrl: string; storagePath: string; consentAt: string } }>('get-base-photo-url', {
     merchantId,
     imageId,
@@ -117,7 +117,7 @@ export async function getBasePhotoUrl(merchantId: string, imageId: string) {
   return data.image
 }
 
-export async function deleteShopperImage(imageId: string, storagePath: string, merchantId?: string) {
+export async function deleteShopperImage(imageId: string, storagePath: string, merchantId: string) {
   await invokeShopperFunction('delete-shopper-image', { merchantId, imageId, storagePath }, true)
 }
 

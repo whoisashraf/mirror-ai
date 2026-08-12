@@ -1,7 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
 import { requireUser, serviceClient } from '../_shared/auth.ts'
-import { requireShopperSession } from '../_shared/session.ts'
+import { findOwnedShopperImage, requireShopperSession } from '../_shared/session.ts'
 
 const OPENROUTER_KEY = Deno.env.get('OPENROUTER_API_KEY') || ''
 const OPENROUTER_MODEL = Deno.env.get('OPENROUTER_CHAT_MODEL') || 'google/gemini-2.5-flash'
@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     let basePhotoImage = ''
     const shopperImageId = requestedShopperImageId || String(generation?.shopper_image_id || '')
     if (shopperImageId) {
-      const { data: sourceImage } = await service.from('shopper_images').select('storage_path').eq('id', shopperImageId).eq('shopper_session_id', shopperSession.id).maybeSingle()
+      const sourceImage = await findOwnedShopperImage(service, merchant.id, user.id, shopperImageId)
       if (!sourceImage && requestedShopperImageId) return errorJson('Shopper photo not found for this private session.', 404)
       if (sourceImage?.storage_path) {
         const { data: image } = await service.storage.from('shopper-images').download(sourceImage.storage_path)

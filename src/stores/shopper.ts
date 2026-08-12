@@ -131,11 +131,10 @@ export const useShopperStore = defineStore('shopper', {
     async restoreBasePhoto(merchantId: string) {
       if (this.imageUrl || this.restoringPhoto) return Boolean(this.imageUrl)
       const saved = savedBasePhoto(merchantId)
-      if (!saved) return false
       this.ensureSession()
       this.restoringPhoto = true
       try {
-        const image = await getBasePhotoUrl(merchantId, saved.imageId)
+        const image = await getBasePhotoUrl(merchantId, saved?.imageId)
         this.imageId = image.id
         this.imageUrl = image.signedUrl
         this.imageStoragePath = image.storagePath
@@ -148,7 +147,11 @@ export const useShopperStore = defineStore('shopper', {
     },
     async clearPhoto(merchantId?: string) {
       const oldUrl = this.imageUrl, oldId = this.imageId, oldPath = this.imageStoragePath
-      if (oldId && oldPath && oldPath !== 'demo/local') await deleteShopperImage(oldId, oldPath, merchantId)
+      if (oldId && oldPath && oldPath !== 'demo/local' && merchantId) await deleteShopperImage(oldId, oldPath, merchantId)
+      this.clearLocalPhoto()
+    },
+    clearLocalPhoto() {
+      const oldUrl = this.imageUrl
       if (oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl)
       this.imageId = ''; this.imageUrl = ''; this.imageStoragePath = ''; this.consentAt = ''
       localStorage.removeItem(BASE_PHOTO_KEY)

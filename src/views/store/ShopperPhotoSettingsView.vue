@@ -36,7 +36,7 @@ onMounted(async () => {
     if (activateTenantScope(merchant.value.id)) {
       chat.reset()
       tryOn.reset()
-      await shopper.clearPhoto().catch(() => undefined)
+      shopper.clearLocalPhoto()
       shopper.rotateSession()
     }
     applyStorefrontTheme(merchant.value)

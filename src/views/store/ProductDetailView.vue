@@ -32,7 +32,7 @@ onMounted(async () => {
     merchant.value = await resolveMerchant(tenantSlugFromRoute(route.params.slug), customTenantHost())
     product.value = await getProduct(route.params.productId as string)
     if (merchant.value) {
-      if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); await shopper.clearPhoto().catch(() => undefined); shopper.rotateSession() }
+      if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); shopper.clearLocalPhoto(); shopper.rotateSession() }
       applyStorefrontTheme(merchant.value)
       if (await initializeAuth()) await shopper.restoreBasePhoto(merchant.value.id)
     }
