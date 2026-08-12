@@ -1,7 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
 import { requireUser, serviceClient } from '../_shared/auth.ts'
-import { findOwnedShopperImage, requireShopperSession } from '../_shared/session.ts'
+import { findOwnedGeneration, findOwnedShopperImage, requireShopperSession } from '../_shared/session.ts'
 
 const OPENROUTER_KEY = Deno.env.get('OPENROUTER_API_KEY') || ''
 const OPENROUTER_MODEL = Deno.env.get('OPENROUTER_CHAT_MODEL') || 'google/gemini-2.5-flash'
@@ -146,8 +146,7 @@ Deno.serve(async (req) => {
     let generation: any = null
     let currentLookImage = ''
     if (body.generationId) {
-      const { data } = await service.from('try_on_generations').select('output_storage_path,shopper_image_id').eq('id', body.generationId).eq('merchant_id', merchant.id).eq('shopper_session_id', shopperSession.id).eq('status', 'completed').maybeSingle()
-      generation = data
+      generation = await findOwnedGeneration(service, merchant.id, user.id, String(body.generationId), true)
       if (generation?.output_storage_path) {
         const { data: image } = await service.storage.from('try-on-results').download(generation.output_storage_path)
         if (image) currentLookImage = await dataUrl(image)

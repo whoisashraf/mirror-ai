@@ -131,8 +131,9 @@ session is bound to exactly one authenticated user. Switching accounts rotates
 the browser session and clears private photo/look state before the new profile loads.
 
 Completed looks can be saved in the current browser. Saves are validated,
-deduplicated by generation, and capped at 20 entries. Private photo access still
-uses short-lived signed URLs; browser saves do not weaken Storage policies.
+deduplicated by generation, and capped at 20 entries. Private photo and saved-look
+access uses short-lived signed URLs authorized to the same account and retailer,
+even after the browser fitting session rotates.
 Removing the base photo also removes generated result files linked to that photo.
 
 ---

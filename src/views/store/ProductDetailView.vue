@@ -71,8 +71,8 @@ async function goToPhotoSettings() {
 }
 async function buyNow() {
   if (!merchant.value || !product.value) return
-  await trackEvent('checkout_clicked', { merchantId:merchant.value.id, sessionId:shopper.sessionId, productId:product.value.id, metadata:{source:'product_detail'} })
   window.open(product.value.product_url, '_blank', 'noopener,noreferrer')
+  void trackEvent('checkout_clicked', { merchantId:merchant.value.id, sessionId:shopper.sessionId, productId:product.value.id, metadata:{source:'product_detail'} })
 }
 </script>
 <template>

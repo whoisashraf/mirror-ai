@@ -1,7 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
 import { requireUser, serviceClient } from '../_shared/auth.ts'
-import { findOwnedShopperImage, requireShopperSession } from '../_shared/session.ts'
+import { findOwnedGeneration, findOwnedShopperImage, requireShopperSession } from '../_shared/session.ts'
 
 const OPENROUTER_KEY = Deno.env.get('OPENROUTER_API_KEY') || ''
 const IMAGE_MODEL = Deno.env.get('OPENROUTER_IMAGE_MODEL') || 'google/gemini-3.1-flash-image'
@@ -94,8 +94,7 @@ Deno.serve(async (req) => {
 
     let parent: any = null
     if (body.parentGenerationId) {
-      const { data } = await service.from('try_on_generations').select('id,output_storage_path,shopper_session_id').eq('id', body.parentGenerationId).eq('merchant_id', merchantId).eq('shopper_session_id', shopperSession.id).eq('status', 'completed').maybeSingle()
-      parent = data
+      parent = await findOwnedGeneration(service, merchantId, user.id, String(body.parentGenerationId), true)
     }
 
     const model = needsPrecision(products) ? PRECISION_MODEL : IMAGE_MODEL

@@ -186,8 +186,8 @@ function openSavedLook(look: SavedLook) {
 
 async function buyProduct(item: Product) {
   if (!merchant.value) return
-  await trackEvent('checkout_clicked', { merchantId:merchant.value.id, sessionId:shopper.sessionId, productId:item.id, generationId:tryOn.current?.id, metadata:{currentLookProductIds:currentProductIds.value} })
   window.open(item.product_url, '_blank', 'noopener,noreferrer')
+  void trackEvent('checkout_clicked', { merchantId:merchant.value.id, sessionId:shopper.sessionId, productId:item.id, generationId:tryOn.current?.id, metadata:{currentLookProductIds:currentProductIds.value} })
 }
 </script>
 <template>

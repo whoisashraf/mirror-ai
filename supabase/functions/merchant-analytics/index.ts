@@ -1,6 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
 import { requireUser, serviceClient } from '../_shared/auth.ts'
+import { summarizeCommerceFunnel } from '../_shared/analytics.ts'
 
 const intentLabels: Record<string,string> = {
   pairing:'Product pairing', occasion:'Occasion suitability', colour:'Colour compatibility', budget:'Budget outfits',
@@ -11,7 +12,7 @@ async function allEvents(service:any, merchantId:string, since:string) {
   const rows:any[]=[]
   for(let from=0;;from+=1000){
     const {data,error}=await service.from('analytics_events')
-      .select('event_type,session_id,product_id,metadata,created_at')
+      .select('id,event_type,session_id,product_id,generation_id,metadata,created_at')
       .eq('merchant_id',merchantId)
       .gte('created_at',since)
       .order('created_at',{ascending:true})
@@ -44,14 +45,7 @@ Deno.serve(async(req)=>{
     const eventCount=(...types:string[])=>events.filter((event:any)=>types.includes(event.event_type)).length
     const sessionSet=(...types:string[])=>new Set(events.filter((event:any)=>types.includes(event.event_type)).map((event:any)=>event.session_id).filter(Boolean))
     const allSessions=sessionSet('store_view','product_view','try_on_started','complete_look_started','chat_started','checkout_clicked')
-    const productViewSessions=sessionSet('product_view')
-    const tryStartSessions=sessionSet('try_on_started','complete_look_started')
-    const tryCompleteSessions=sessionSet('try_on_completed','complete_look_completed')
-    const checkoutSessions=sessionSet('checkout_clicked')
-    const intersect=(base:Set<string>,next:Set<string>)=>new Set([...base].filter((id)=>next.has(id)))
-    const startedAfterView=intersect(productViewSessions,tryStartSessions)
-    const completedAfterStart=intersect(startedAfterView,tryCompleteSessions)
-    const checkoutAfterComplete=intersect(completedAfterStart,checkoutSessions)
+    const commerceSummary=summarizeCommerceFunnel(events)
     const pct=(value:number,total:number)=>total?Math.round((value/total)*100):0
 
     const intentCounts=new Map<string,number>()
@@ -111,26 +105,18 @@ Deno.serve(async(req)=>{
 
     const recommendationShown=eventCount('recommendation_shown')
     const recommendationClicks=eventCount('recommendation_clicked')
-    const completedLooks=eventCount('try_on_completed','complete_look_completed')
-    const startedLooks=eventCount('try_on_started','complete_look_started')
-
     const result={
       productCount:products.count||0,
       shopperSessions:allSessions.size,
-      tryOns:completedLooks,
+      tryOns:commerceSummary.completedLooks,
       conversations:sessionSet('chat_started').size,
       recommendationShown,
       recommendationClicks,
-      checkoutClicks:eventCount('checkout_clicked'),
-      tryOnCompletionRate:pct(completedLooks,startedLooks),
+      checkoutClicks:commerceSummary.checkoutSessions,
+      tryOnCompletionRate:commerceSummary.tryOnCompletionRate,
       recommendationClickRate:pct(recommendationClicks,recommendationShown),
-      checkoutRate:pct(checkoutAfterComplete.size,completedAfterStart.size),
-      funnel:[
-        {label:'Viewed a product',value:productViewSessions.size,conversionFromPrevious:null},
-        {label:'Started a try-on',value:startedAfterView.size,conversionFromPrevious:pct(startedAfterView.size,productViewSessions.size)},
-        {label:'Completed a try-on',value:completedAfterStart.size,conversionFromPrevious:pct(completedAfterStart.size,startedAfterView.size)},
-        {label:'Clicked to checkout',value:checkoutAfterComplete.size,conversionFromPrevious:pct(checkoutAfterComplete.size,completedAfterStart.size)},
-      ],
+      checkoutRate:commerceSummary.checkoutRate,
+      funnel:commerceSummary.funnel,
       shopperIntents,
       topProducts,
       dailyActivity,

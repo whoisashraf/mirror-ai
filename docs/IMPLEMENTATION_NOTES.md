@@ -38,7 +38,9 @@ UI and AI prompts avoid guaranteeing fit, sizing, colour accuracy, material beha
 ## Security decisions
 
 - Shopper photos and try-on output buckets are private.
-- Shopper JWT ownership and a separate hashed fitting-session token are both required for private photos, generations and conversations.
+- A valid shopper JWT and hashed current fitting-session token prove each request;
+  historical photos and saved generations additionally require the same account
+  and retailer ownership.
 - Account changes rotate browser fitting credentials and clear cached private photo/look state; legacy unowned sessions cannot be claimed.
 - Raw model/API secrets exist only in Edge Functions.
 - Product recommendation IDs are validated server-side against active merchant products.

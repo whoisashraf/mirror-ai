@@ -1,7 +1,7 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { errorJson, json } from '../_shared/http.ts'
 import { requireUser, serviceClient } from '../_shared/auth.ts'
-import { requireShopperSession } from '../_shared/session.ts'
+import { ownedShopperSessionIds, requireShopperSession } from '../_shared/session.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -18,13 +18,15 @@ Deno.serve(async (req) => {
       : []
     if (!merchantId || !sessionId || !generationIds.length) return errorJson('Missing saved-look context.', 422)
 
-    const shopperSession = await requireShopperSession(req, service, merchantId, sessionId, user.id)
+    await requireShopperSession(req, service, merchantId, sessionId, user.id)
+    const ownedSessionIds = await ownedShopperSessionIds(service, merchantId, user.id)
+    if (!ownedSessionIds.length) return json({ urls: {} })
     const { data: generations, error } = await service
       .from('try_on_generations')
       .select('id,output_storage_path')
       .in('id', generationIds)
       .eq('merchant_id', merchantId)
-      .eq('shopper_session_id', shopperSession.id)
+      .in('shopper_session_id', ownedSessionIds)
       .eq('status', 'completed')
       .not('output_storage_path', 'is', null)
     if (error) throw error

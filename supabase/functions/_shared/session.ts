@@ -31,11 +31,10 @@ export async function requireShopperSession(req: Request, service: SupabaseClien
   return existing
 }
 
-export async function findOwnedShopperImage(
+export async function ownedShopperSessionIds(
   service: SupabaseClient,
   merchantId: string,
   userId: string,
-  imageId?: string,
 ) {
   const { data: sessions, error: sessionError } = await service
     .from('shopper_sessions')
@@ -43,7 +42,16 @@ export async function findOwnedShopperImage(
     .eq('merchant_id', merchantId)
     .eq('auth_user_id', userId)
   if (sessionError) throw sessionError
-  const sessionIds = (sessions || []).map((session) => session.id)
+  return (sessions || []).map((session) => session.id)
+}
+
+export async function findOwnedShopperImage(
+  service: SupabaseClient,
+  merchantId: string,
+  userId: string,
+  imageId?: string,
+) {
+  const sessionIds = await ownedShopperSessionIds(service, merchantId, userId)
   if (!sessionIds.length) return null
 
   let query = service
@@ -53,6 +61,27 @@ export async function findOwnedShopperImage(
     .order('created_at', { ascending: false })
     .limit(1)
   if (imageId) query = query.eq('id', imageId)
+  const { data, error } = await query.maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function findOwnedGeneration(
+  service: SupabaseClient,
+  merchantId: string,
+  userId: string,
+  generationId: string,
+  completedOnly = false,
+) {
+  const sessionIds = await ownedShopperSessionIds(service, merchantId, userId)
+  if (!sessionIds.length) return null
+  let query = service
+    .from('try_on_generations')
+    .select('*')
+    .eq('id', generationId)
+    .eq('merchant_id', merchantId)
+    .in('shopper_session_id', sessionIds)
+  if (completedOnly) query = query.eq('status', 'completed')
   const { data, error } = await query.maybeSingle()
   if (error) throw error
   return data

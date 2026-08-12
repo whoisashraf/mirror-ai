@@ -4,6 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { getOwnedMerchant } from '@/lib/api'
 import AppButton from '@/components/ui/AppButton.vue'
+import { useShopperStore } from '@/stores/shopper'
+import { useTryOnStore } from '@/stores/tryOn'
+import { useChatStore } from '@/stores/chat'
+import { clearSavedLooks } from '@/lib/savedLooks'
 
 const router = useRouter()
 const route = useRoute()
@@ -13,6 +17,9 @@ const error = ref('')
 const notice = ref('')
 const loading = ref(false)
 const creatingAccount = ref(false)
+const shopper = useShopperStore()
+const tryOn = useTryOnStore()
+const chat = useChatStore()
 const adminFlow = computed(() => route.query.role === 'admin' || (typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/dashboard')))
 const redirect = computed(() => typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//') ? route.query.redirect : adminFlow.value ? '/dashboard' : '/')
 const shopperFlow = computed(() => !adminFlow.value)
@@ -21,7 +28,12 @@ const backTo = computed(() => {
   return shopperFlow.value && requested.startsWith('/') && !requested.startsWith('//') && !requested.startsWith('/try-on/') && !requested.includes('/try-on/') ? requested : '/'
 })
 
-async function continueAfterAuth() {
+async function continueAfterAuth(userId: string) {
+  if (shopper.syncAuthenticatedUser(userId)) {
+    tryOn.reset()
+    chat.reset()
+    clearSavedLooks()
+  }
   if (!shopperFlow.value) {
     const existing = await getOwnedMerchant()
     if (!existing) throw new Error('This account is not assigned to a merchant store.')
@@ -31,7 +43,7 @@ async function continueAfterAuth() {
 
 onMounted(async () => {
   const { data } = await supabase.auth.getUser()
-  if (data.user) await continueAfterAuth()
+  if (data.user) await continueAfterAuth(data.user.id)
 })
 
 async function submit() {
@@ -52,16 +64,18 @@ async function submit() {
         creatingAccount.value = false
         return
       }
-      await continueAfterAuth()
+      if (!data.user) throw new Error('The new account could not be loaded.')
+      await continueAfterAuth(data.user.id)
       return
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.value.trim(),
       password: password.value,
     })
     if (signInError) throw signInError
-    await continueAfterAuth()
+    if (!data.user) throw new Error('The signed-in account could not be loaded.')
+    await continueAfterAuth(data.user.id)
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Authentication failed.'
   } finally {
