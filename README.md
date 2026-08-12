@@ -124,7 +124,9 @@ All shopper-sensitive operations require both the Supabase user JWT and fitting-
 - `get-saved-look-urls`
 - `chat-with-mirror`
 
-The token is hashed server-side in `shopper_sessions`.
+The token is hashed server-side in `shopper_sessions`, and every private fitting
+session is bound to exactly one authenticated user. Switching accounts rotates
+the browser session and clears private photo/look state before the new profile loads.
 
 Completed looks can be saved in the current browser. Saves are validated,
 deduplicated by generation, and capped at 20 entries. Private photo access still

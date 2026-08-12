@@ -5,7 +5,7 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export async function requireShopperSession(req: Request, service: SupabaseClient, merchantId: string | null, sessionId: string) {
+export async function requireShopperSession(req: Request, service: SupabaseClient, merchantId: string | null, sessionId: string, userId?: string) {
   const token = (req.headers.get('x-mirror-session-token') || '').trim()
   if (!token) throw new Error('SESSION_REQUIRED')
   const tokenHash = await sha256(token)
@@ -16,7 +16,7 @@ export async function requireShopperSession(req: Request, service: SupabaseClien
 
   if (!existing) {
     if (!merchantId) throw new Error('SESSION_REQUIRED')
-    const { data: created, error: createError } = await service.from('shopper_sessions').insert({ merchant_id: merchantId, session_id: sessionId, session_token_hash: tokenHash, expires_at: expiresAt, last_seen_at: new Date().toISOString() }).select('*').single()
+    const { data: created, error: createError } = await service.from('shopper_sessions').insert({ merchant_id: merchantId, session_id: sessionId, session_token_hash: tokenHash, auth_user_id: userId || null, expires_at: expiresAt, last_seen_at: new Date().toISOString() }).select('*').single()
     if (createError) throw createError
     return created
   }
@@ -24,6 +24,8 @@ export async function requireShopperSession(req: Request, service: SupabaseClien
   if (merchantId && existing.merchant_id !== merchantId) throw new Error('SESSION_MERCHANT_MISMATCH')
   if (existing.session_token_hash !== tokenHash) throw new Error('SESSION_INVALID')
   if (existing.expires_at && new Date(existing.expires_at).getTime() < Date.now()) throw new Error('SESSION_EXPIRED')
+  if (userId && !existing.auth_user_id) throw new Error('SESSION_USER_REQUIRED')
+  if (userId && existing.auth_user_id !== userId) throw new Error('SESSION_USER_MISMATCH')
 
   await service.from('shopper_sessions').update({ last_seen_at: new Date().toISOString(), expires_at: expiresAt }).eq('id', existing.id)
   return existing

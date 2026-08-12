@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storefrontPath } from '@/lib/tenant'
 import { getUserRole, initializeAuth, signOut, type AppRole } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,11 @@ import type { Merchant } from '@/types'
 const props = defineProps<{ merchant: Merchant }>()
 const cfg = computed(() => props.merchant.storefront_config || {})
 const home = computed(() => storefrontPath(props.merchant, '/'))
-const photoSettings = computed(() => storefrontPath(props.merchant, '/settings/photo'))
+const route = useRoute()
+const photoSettings = computed(() => ({
+  path: storefrontPath(props.merchant, '/settings/photo'),
+  query: route.path.includes('/settings/photo') ? {} : { return:route.fullPath },
+}))
 const router = useRouter()
 const user = ref<User | null>(null)
 const role = ref<AppRole | null>(null)

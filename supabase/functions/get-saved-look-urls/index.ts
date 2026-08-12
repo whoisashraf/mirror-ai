@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
 
   const service = serviceClient()
   try {
-    await requireUser(req, service)
+    const user = await requireUser(req, service)
     const body = await req.json()
     const merchantId = String(body.merchantId || '')
     const sessionId = String(body.sessionId || '')
@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
       : []
     if (!merchantId || !sessionId || !generationIds.length) return errorJson('Missing saved-look context.', 422)
 
-    const shopperSession = await requireShopperSession(req, service, merchantId, sessionId)
+    const shopperSession = await requireShopperSession(req, service, merchantId, sessionId, user.id)
     const { data: generations, error } = await service
       .from('try_on_generations')
       .select('id,output_storage_path')

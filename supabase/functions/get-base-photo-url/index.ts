@@ -9,14 +9,14 @@ Deno.serve(async (req) => {
   const service = serviceClient()
 
   try {
-    await requireUser(req, service)
+    const user = await requireUser(req, service)
     const body = await req.json()
     const merchantId = String(body.merchantId || '')
     const sessionId = String(body.sessionId || '')
     const imageId = String(body.imageId || '')
     if (!merchantId || !sessionId || !imageId) return errorJson('Missing base-photo context.', 422)
 
-    const session = await requireShopperSession(req, service, merchantId, sessionId)
+    const session = await requireShopperSession(req, service, merchantId, sessionId, user.id)
     const { data: image, error } = await service
       .from('shopper_images')
       .select('id,storage_path,consent_at')

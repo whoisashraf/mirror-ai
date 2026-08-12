@@ -5,6 +5,7 @@ import type { PhotoAssessment, StylePreference, TryOnCategory } from '@/types'
 
 const STYLE_KEY = 'mirror_style_preference'
 const BASE_PHOTO_KEY = 'mirror_base_photo_v1'
+const ACCOUNT_KEY = 'mirror_active_auth_user_id'
 interface BasePhotoRecord { merchantId: string; imageId: string }
 
 function savedBasePhoto(merchantId: string): BasePhotoRecord | null {
@@ -83,6 +84,23 @@ export const useShopperStore = defineStore('shopper', {
     stylePreference: savedStylePreference(),
   }),
   actions: {
+    syncAuthenticatedUser(userId: string | null) {
+      const previous = localStorage.getItem(ACCOUNT_KEY)
+      if (previous === userId) return false
+      localStorage.removeItem(BASE_PHOTO_KEY)
+      clearShopperSession()
+      this.imageId = ''
+      this.imageUrl = ''
+      this.imageStoragePath = ''
+      this.consentAt = ''
+      this.photoAssessment = null
+      this.sessionId = ''
+      this.sessionToken = ''
+      if (userId) localStorage.setItem(ACCOUNT_KEY, userId)
+      else localStorage.removeItem(ACCOUNT_KEY)
+      this.ensureSession()
+      return true
+    },
     ensureSession() {
       if (!this.sessionId) this.sessionId = getOrCreateSessionId()
       if (!this.sessionToken) this.sessionToken = getOrCreateSessionToken()

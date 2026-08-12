@@ -14,8 +14,12 @@ const notice = ref('')
 const loading = ref(false)
 const creatingAccount = ref(false)
 const adminFlow = computed(() => route.query.role === 'admin' || (typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/dashboard')))
-const redirect = computed(() => typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : adminFlow.value ? '/dashboard' : '/')
+const redirect = computed(() => typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//') ? route.query.redirect : adminFlow.value ? '/dashboard' : '/')
 const shopperFlow = computed(() => !adminFlow.value)
+const backTo = computed(() => {
+  const requested = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  return shopperFlow.value && requested.startsWith('/') && !requested.startsWith('//') && !requested.startsWith('/try-on/') && !requested.includes('/try-on/') ? requested : '/'
+})
 
 async function continueAfterAuth() {
   if (!shopperFlow.value) {
@@ -72,6 +76,7 @@ async function submit() {
 <template>
   <main class="grid min-h-screen place-items-center bg-paper px-5">
     <form class="w-full max-w-md rounded-[1.6rem] border border-line bg-white p-6" @submit.prevent="submit">
+      <RouterLink :to="backTo" class="mb-6 inline-block text-xs font-semibold text-muted">← Back</RouterLink>
       <p class="text-xs font-semibold uppercase tracking-[.2em] text-muted">{{ shopperFlow ? 'Shopper access' : 'Merchant access' }}</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight">{{ creatingAccount ? 'Create your account' : 'Sign in to Mirror' }}</h1>
       <p class="mt-2 text-sm leading-6 text-muted">

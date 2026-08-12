@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
   const service = serviceClient()
   let generationId: string | null = null
   try {
-    await requireUser(req, service)
+    const user = await requireUser(req, service)
     if (!OPENROUTER_KEY) return errorJson('OPENROUTER_API_KEY is not configured.', 503)
     const body = await req.json()
     const merchantId = String(body.merchantId || '')
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     const productIds = Array.isArray(body.productIds) ? body.productIds.map(String) : []
     if (!merchantId || !sessionId || !shopperImageId || !productIds.length) return errorJson('Missing generation context.')
     if (!['menswear','womenswear','any'].includes(stylePreference)) return errorJson('Choose a valid clothing preference.', 422)
-    const shopperSession = await requireShopperSession(req, service, merchantId, sessionId)
+    const shopperSession = await requireShopperSession(req, service, merchantId, sessionId, user.id)
     await rateLimit(service, 'shopper-hour', `${shopperSession.id}:${sessionId}`, 5, 60 * 60 * 1000)
     await rateLimit(service, 'merchant-day', merchantId, 150, 24 * 60 * 60 * 1000)
 

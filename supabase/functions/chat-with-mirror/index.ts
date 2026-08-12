@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return errorJson('Method not allowed.', 405)
   const service = serviceClient()
   try {
-    await requireUser(req, service)
+    const user = await requireUser(req, service)
     const body = await req.json()
     const message = String(body.message || '').trim().slice(0, 1800)
     const merchantId = String(body.merchantId || '')
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const stylePreference = String(body.stylePreference || '')
     if (!merchantId || !sessionId || !message) return errorJson('Missing conversation context.')
     if (!['menswear','womenswear','any'].includes(stylePreference)) return errorJson('Choose a valid clothing preference.', 422)
-    const shopperSession = await requireShopperSession(req, service, merchantId, sessionId)
+    const shopperSession = await requireShopperSession(req, service, merchantId, sessionId, user.id)
 
     const { data: merchant, error: merchantError } = await service.from('merchants').select('id,name,currency').eq('id', merchantId).single()
     if (merchantError || !merchant) return errorJson('Merchant not found.', 404)

@@ -47,3 +47,7 @@ export function saveLook(generation: TryOnGeneration, productIds: string[]) {
 export function removeSavedLook(generationId: string) {
   localStorage.setItem(KEY, JSON.stringify(loadSavedLooks().filter((item) => item.generationId !== generationId)))
 }
+
+export function clearSavedLooks() {
+  localStorage.removeItem(KEY)
+}

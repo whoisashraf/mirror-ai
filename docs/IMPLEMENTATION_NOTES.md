@@ -36,7 +36,8 @@ UI and AI prompts avoid guaranteeing fit, sizing, colour accuracy, material beha
 ## Security decisions
 
 - Shopper photos and try-on output buckets are private.
-- Shoppers use Supabase Anonymous Auth, giving RLS an `auth.uid()` without asking the shopper to register.
+- Shopper JWT ownership and a separate hashed fitting-session token are both required for private photos, generations and conversations.
+- Account changes rotate browser fitting credentials and clear cached private photo/look state; legacy unowned sessions cannot be claimed.
 - Raw model/API secrets exist only in Edge Functions.
 - Product recommendation IDs are validated server-side against active merchant products.
 - Generation endpoint validates product ownership and shopper image ownership.

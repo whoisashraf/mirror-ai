@@ -34,6 +34,10 @@ const result = computed(() => tryOn.current?.output_image_url || shopper.imageUr
 const assistantName = computed(() => merchant.value?.storefront_config?.assistantName || 'Mirror')
 const currentProductIds = computed(() => tryOn.current?.productIds || (product.value ? [product.value.id] : []))
 const history = computed(() => tryOn.history)
+const backDestination = computed(() => merchant.value
+  ? storefrontPath(merchant.value, product.value ? `/product/${product.value.id}` : '/')
+  : '/')
+const backLabel = computed(() => product.value ? 'Product' : 'Store')
 const fidelityPercent = computed(() => {
   const score = Number(tryOn.current?.fidelity_report?.overall || 0)
   return Math.min(100, Math.round(score <= 1 ? score * 100 : score))
@@ -173,7 +177,7 @@ async function buyProduct(item: Product) {
 <template>
   <main class="h-dvh overflow-hidden bg-[var(--store-background)] text-[var(--store-text)]">
     <header class="h-16 border-b border-black/10 bg-[var(--store-background)]">
-      <div class="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6"><button class="focus-ring min-h-11 rounded-full px-2 text-sm font-medium" @click="router.back()">← Back</button><span class="font-semibold">{{ merchant?.name || 'Store' }}</span><span class="text-xs opacity-55">{{ assistantName }}</span></div>
+      <div class="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6"><button class="focus-ring min-h-11 rounded-full px-2 text-sm font-medium" @click="router.push(backDestination)">← {{ backLabel }}</button><span class="font-semibold">{{ merchant?.name || 'Store' }}</span><span class="text-xs opacity-55">{{ assistantName }}</span></div>
     </header>
 
     <div class="mx-auto grid h-[calc(100dvh-4rem)] max-w-[1440px] grid-rows-[42dvh_minmax(0,1fr)] gap-3 overflow-hidden px-3 py-3 sm:px-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(420px,.85fr)] lg:grid-rows-1 lg:gap-5 lg:px-6 lg:py-5">

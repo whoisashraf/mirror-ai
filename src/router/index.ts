@@ -22,7 +22,9 @@ const router = createRouter({
     { path:'/dashboard/settings', component:() => import('@/views/dashboard/DashboardSettingsView.vue'), meta:{ requiresAuth:true, requiresAdmin:true } },
     { path:'/:pathMatch(.*)*', component:() => import('@/views/NotFoundView.vue') },
   ],
-  scrollBehavior: () => ({ top:0 }),
+  scrollBehavior: (to) => to.hash
+    ? new Promise((resolve) => requestAnimationFrame(() => resolve({ el:to.hash, behavior:'smooth', top:16 })))
+    : { top:0 },
 })
 
 router.beforeEach(async (to) => {

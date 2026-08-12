@@ -7,7 +7,7 @@ import AppButton from '@/components/ui/AppButton.vue'
 import type { TryOnCategory } from '@/types'
 import { initializeAuth } from '@/lib/auth'
 
-const props = defineProps<{ merchantId?: string; productId?: string; tryOnCategory?: TryOnCategory; continueLabel?: string }>()
+const props = defineProps<{ merchantId?: string; productId?: string; tryOnCategory?: TryOnCategory; continueLabel?: string; continueDescription?: string }>()
 const emit = defineEmits<{ continue: [] }>()
 const shopper = useShopperStore()
 const route = useRoute()
@@ -45,7 +45,7 @@ async function handleFile(file?: File) {
     <div v-if="shopper.imageUrl" class="space-y-4">
       <div v-if="continueLabel" class="rounded-[1.2rem] bg-ink p-4 text-white">
         <p class="text-xs font-semibold uppercase tracking-[.16em] text-white/55">Photo ready</p>
-        <p class="mt-1 text-sm leading-6 text-white/75">Your photo is saved. Continue to generate your try-on.</p>
+        <p class="mt-1 text-sm leading-6 text-white/75">{{ continueDescription || 'Your photo is saved. Continue to generate your try-on.' }}</p>
         <AppButton class="mt-3 w-full !bg-white !text-ink hover:!bg-cream" @click="emit('continue')">{{ continueLabel }} →</AppButton>
       </div>
       <div class="overflow-hidden rounded-[1.2rem] bg-cream"><img :src="shopper.imageUrl" alt="Your uploaded try-on photo" class="max-h-[58vh] w-full object-contain" /></div>
@@ -73,7 +73,7 @@ async function handleFile(file?: File) {
       <p class="mx-auto mt-4 max-w-sm text-xs leading-5 text-muted">Once uploaded, Mirror uses this photo automatically until you replace or remove it in Photo settings.</p>
     </div>
     <input ref="input" type="file" accept="image/*" capture="environment" class="hidden" @change="handleFile(($event.target as HTMLInputElement).files?.[0])" />
-    <label class="mt-4 flex items-start gap-3 border-t border-line pt-4 text-xs leading-5 text-muted"><input v-model="consent" type="checkbox" class="mt-1 h-4 w-4 accent-black" /><span>I consent to Mirror processing this photo to generate virtual try-on images and personalized fashion recommendations. <RouterLink to="/privacy" class="font-medium text-ink underline">Privacy details</RouterLink>.</span></label>
+    <label class="mt-4 flex items-start gap-3 border-t border-line pt-4 text-xs leading-5 text-muted"><input v-model="consent" type="checkbox" class="mt-1 h-4 w-4 accent-black" /><span>I consent to Mirror processing this photo to generate virtual try-on images and personalized fashion recommendations. <RouterLink :to="{ path:'/privacy', query:{ return:$route.fullPath } }" class="font-medium text-ink underline">Privacy details</RouterLink>.</span></label>
     <p v-if="error" class="mt-3 text-xs font-medium text-red-700">{{ error }}</p>
   </section>
 </template>

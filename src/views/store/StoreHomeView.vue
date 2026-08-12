@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import StoreHeader from '@/components/store/StoreHeader.vue'
 import ProductCard from '@/components/store/ProductCard.vue'
+import AppButton from '@/components/ui/AppButton.vue'
 import { getProducts, resolveMerchant, trackEvent } from '@/lib/api'
 import { activateTenantScope, applyStorefrontTheme, customTenantHost, tenantSlugFromRoute } from '@/lib/tenant'
 import { useShopperStore } from '@/stores/shopper'
@@ -60,5 +61,6 @@ onMounted(async () => {
       <div v-else class="rounded-[1.5rem] border border-black/10 bg-white p-8 text-center"><h2 class="font-semibold">No products here yet</h2><p class="mt-2 text-sm opacity-60">This store has not published products in this category.</p></div>
     </main>
   </div>
-  <div v-else-if="!loading" class="grid min-h-screen place-items-center p-8 text-center"><div><h1 class="text-2xl font-semibold">Store unavailable</h1><p class="mt-2 text-sm text-muted">Check the store link or contact the retailer.</p></div></div>
+  <div v-else-if="loading" class="grid min-h-screen place-items-center p-8 text-sm text-muted">Loading store…</div>
+  <div v-else-if="!loading" class="grid min-h-screen place-items-center p-8 text-center"><div><h1 class="text-2xl font-semibold">Store unavailable</h1><p class="mt-2 text-sm text-muted">Check the store link or contact the retailer.</p><AppButton class="mt-5" @click="$router.push('/')">Go to Mirror</AppButton></div></div>
 </template>

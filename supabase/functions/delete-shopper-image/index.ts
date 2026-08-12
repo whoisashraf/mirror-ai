@@ -9,12 +9,12 @@ Deno.serve(async (req) => {
   const service = serviceClient()
 
   try {
-    await requireUser(req, service)
+    const user = await requireUser(req, service)
     const body = await req.json()
     const sessionId = String(body.sessionId || '')
     const imageId = String(body.imageId || '')
     if (!sessionId || !imageId) return errorJson('Missing delete parameters.')
-    const session = await requireShopperSession(req, service, null, sessionId)
+    const session = await requireShopperSession(req, service, null, sessionId, user.id)
     const { data: row, error } = await service.from('shopper_images').select('id,storage_path,shopper_session_id').eq('id', imageId).eq('shopper_session_id', session.id).single()
     if (error || !row) return errorJson('Shopper image not found.', 404)
     await service.storage.from('shopper-images').remove([row.storage_path])

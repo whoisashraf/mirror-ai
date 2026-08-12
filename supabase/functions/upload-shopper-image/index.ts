@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   const service = serviceClient()
 
   try {
-    await requireUser(req, service)
+    const user = await requireUser(req, service)
     const body = await req.json()
     const merchantId = String(body.merchantId || '')
     const sessionId = String(body.sessionId || '')
@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const fileName = String(body.fileName || 'shopper.jpg')
 
     if (!merchantId || !sessionId || !base64Data) return errorJson('Missing upload parameters.')
-    const session = await requireShopperSession(req, service, merchantId, sessionId)
+    const session = await requireShopperSession(req, service, merchantId, sessionId, user.id)
     const ext = (fileName.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
     const path = `${merchantId}/${sessionId}/${crypto.randomUUID()}.${ext}`
 

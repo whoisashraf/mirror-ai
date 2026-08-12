@@ -15,22 +15,27 @@ import type { Merchant, Product, StylePreference } from '@/types'
 
 const route = useRoute(), router = useRouter(), shopper = useShopperStore(), tryOn = useTryOnStore(), chat = useChatStore()
 const merchant = ref<Merchant | null>(null), product = ref<Product | null>(null), showPhoto = ref(false), starting = ref(false)
+const loading = ref(true)
 const preferenceError = ref('')
 const tryOnLabel = computed(() => merchant.value?.storefront_config?.tryOnLabel || 'Try it on')
 const photoSettingsPath = computed(() => merchant.value ? storefrontPath(merchant.value, '/settings/photo') : '/')
 
 onMounted(async () => {
-  shopper.ensureSession()
-  merchant.value = await resolveMerchant(tenantSlugFromRoute(route.params.slug), customTenantHost())
-  product.value = await getProduct(route.params.productId as string)
-  if (merchant.value) {
-    if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); await shopper.clearPhoto().catch(() => undefined); shopper.rotateSession() }
-    applyStorefrontTheme(merchant.value)
-    if (await initializeAuth()) await shopper.restoreBasePhoto(merchant.value.id)
+  try {
+    shopper.ensureSession()
+    merchant.value = await resolveMerchant(tenantSlugFromRoute(route.params.slug), customTenantHost())
+    product.value = await getProduct(route.params.productId as string)
+    if (merchant.value) {
+      if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); await shopper.clearPhoto().catch(() => undefined); shopper.rotateSession() }
+      applyStorefrontTheme(merchant.value)
+      if (await initializeAuth()) await shopper.restoreBasePhoto(merchant.value.id)
+    }
+    if (merchant.value && product.value && product.value.merchant_id === merchant.value.id) {
+      await trackEvent('product_view', { merchantId:merchant.value.id, sessionId:shopper.sessionId, productId:product.value.id })
+    } else if (product.value && merchant.value && product.value.merchant_id !== merchant.value.id) product.value = null
+  } finally {
+    loading.value = false
   }
-  if (merchant.value && product.value && product.value.merchant_id === merchant.value.id) {
-    await trackEvent('product_view', { merchantId:merchant.value.id, sessionId:shopper.sessionId, productId:product.value.id })
-  } else if (product.value && merchant.value && product.value.merchant_id !== merchant.value.id) product.value = null
 })
 
 async function start() {
@@ -53,12 +58,13 @@ async function start() {
 }
 function choosePreference(value: StylePreference) { shopper.setStylePreference(value); preferenceError.value = '' }
 function managePhoto() {
-  if (shopper.imageUrl) void router.push(photoSettingsPath.value)
+  if (shopper.imageUrl) void router.push({ path:photoSettingsPath.value, query:{ return:route.fullPath } })
   else showPhoto.value = true
 }
 </script>
 <template>
   <div v-if="merchant&&product&&(!shopper.stylePreference||preferenceError)" class="fixed bottom-4 left-1/2 z-50 w-[min(94vw,34rem)] -translate-x-1/2 rounded-2xl border border-line bg-white p-4 shadow-xl"><p class="text-sm font-semibold">Which collection should Mirror use?</p><p class="mt-1 text-xs text-muted">This controls product matching—it does not label your identity.</p><div class="mt-3 grid grid-cols-3 gap-2"><button v-for="option in (['menswear','womenswear','any'] as StylePreference[])" :key="option" class="rounded-full border px-3 py-2 text-xs font-semibold capitalize" :class="shopper.stylePreference===option?'border-ink bg-ink text-white':'border-line'" @click="choosePreference(option)">{{ option }}</button></div><p v-if="preferenceError" role="alert" class="mt-2 text-xs text-red-700">{{ preferenceError }}</p></div>
   <div v-if="merchant&&product" class="min-h-screen bg-[var(--store-background)] text-[var(--store-text)]"><StoreHeader :merchant="merchant"/><main class="mx-auto max-w-6xl px-4 pb-24 pt-5 sm:px-6 sm:pt-10"><div class="grid gap-8 lg:grid-cols-[1.08fr_.92fr] lg:gap-14"><div class="overflow-hidden rounded-[1.6rem] bg-cream"><img :src="product.primary_image_url" :alt="product.name" class="aspect-[4/5] w-full object-cover"/></div><div class="lg:sticky lg:top-24 lg:self-start"><p class="text-xs font-semibold uppercase tracking-[.18em] opacity-60">{{ product.category }}</p><h1 class="mt-2 text-3xl font-semibold tracking-[-.035em] sm:text-4xl">{{ product.name }}</h1><p class="mt-3 text-lg font-medium">{{ formatMoney(product.price,product.currency) }}</p><p class="mt-5 text-sm leading-7 opacity-65">{{ product.description }}</p><div class="mt-5 flex flex-wrap gap-2"><span v-for="c in product.colours" :key="c" class="rounded-full border border-black/15 px-3 py-1.5 text-xs">{{ c }}</span><span v-for="s in product.sizes" :key="s" class="rounded-full bg-cream px-3 py-1.5 text-xs">{{ s }}</span></div><div class="mt-8 grid gap-2"><AppButton class="w-full" :disabled="starting || shopper.restoringPhoto" @click="start">{{ shopper.restoringPhoto?'Restoring your photo…':starting?'Starting…':tryOnLabel }}</AppButton><AppButton variant="outline" class="w-full" @click="managePhoto">{{ shopper.imageUrl?'Change photo in settings':`Ask ${merchant.storefront_config?.assistantName || 'Mirror'} with my photo` }}</AppButton></div><p v-if="shopper.imageUrl" class="mt-3 text-xs font-medium opacity-65">Your base photo is ready and will be used automatically.</p><p class="mt-4 text-xs leading-5 opacity-60">Virtual try-on is a visual approximation. It does not guarantee size, fit or how fabric will behave in person.</p></div></div><div v-if="showPhoto" class="mx-auto mt-10 max-w-xl"><PhotoUploader :merchant-id="merchant.id" :product-id="product.id" :try-on-category="product.try_on_category" :continue-label="`Try ${product.name} with this photo`" @continue="start"/></div></main></div>
-  <div v-else class="grid min-h-screen place-items-center p-8 text-center"><div><h1 class="text-2xl font-semibold">Product unavailable</h1><p class="mt-2 text-sm text-muted">This product is not available in this store.</p></div></div>
+  <div v-else-if="loading" class="grid min-h-screen place-items-center p-8 text-sm text-muted">Loading product…</div>
+  <div v-else class="grid min-h-screen place-items-center p-8 text-center"><div><h1 class="text-2xl font-semibold">Product unavailable</h1><p class="mt-2 text-sm text-muted">This product is not available in this store.</p><AppButton class="mt-5" @click="router.push(merchant ? storefrontPath(merchant, '/') : '/')">{{ merchant ? 'Browse the store' : 'Go to Mirror' }}</AppButton></div></div>
 </template>
