@@ -12,6 +12,7 @@ import { useShopperStore } from '@/stores/shopper'
 import { useTryOnStore } from '@/stores/tryOn'
 import { useChatStore } from '@/stores/chat'
 import { isLookSaved, loadSavedLooks, removeSavedLook, saveLook as persistLook, type SavedLook } from '@/lib/savedLooks'
+import { initializeAuth } from '@/lib/auth'
 import type { Merchant, Product, TryOnCategory } from '@/types'
 
 const route = useRoute()
@@ -58,6 +59,7 @@ onMounted(async () => {
   if (merchant.value) {
     if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); await shopper.clearPhoto().catch(() => undefined); shopper.rotateSession() }
     applyStorefrontTheme(merchant.value)
+    if (await initializeAuth()) await shopper.restoreBasePhoto(merchant.value.id)
     await refreshSavedLooks()
   }
   if (!tryOn.current && !shopper.imageUrl) error.value = 'This try-on photo is no longer available in this browser session.'

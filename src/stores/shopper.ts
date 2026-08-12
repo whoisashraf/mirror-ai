@@ -1,9 +1,18 @@
 import { defineStore } from 'pinia'
 import { clearShopperSession, getOrCreateSessionId, getOrCreateSessionToken } from '@/lib/session'
-import { deleteShopperImage, uploadShopperImage } from '@/lib/api'
+import { deleteShopperImage, getBasePhotoUrl, uploadShopperImage } from '@/lib/api'
 import type { PhotoAssessment, StylePreference, TryOnCategory } from '@/types'
 
 const STYLE_KEY = 'mirror_style_preference'
+const BASE_PHOTO_KEY = 'mirror_base_photo_v1'
+interface BasePhotoRecord { merchantId: string; imageId: string }
+
+function savedBasePhoto(merchantId: string): BasePhotoRecord | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(BASE_PHOTO_KEY) || 'null')
+    return value?.merchantId === merchantId && typeof value?.imageId === 'string' ? value : null
+  } catch { return null }
+}
 function savedStylePreference(): StylePreference | '' {
   const value = typeof localStorage === 'undefined' ? '' : localStorage.getItem(STYLE_KEY)
   return value === 'menswear' || value === 'womenswear' || value === 'any' ? value : ''
@@ -69,6 +78,7 @@ export const useShopperStore = defineStore('shopper', {
     imageStoragePath: '' as string,
     consentAt: '' as string,
     uploading: false,
+    restoringPhoto: false,
     photoAssessment: null as PhotoAssessment | null,
     stylePreference: savedStylePreference(),
   }),
@@ -84,6 +94,7 @@ export const useShopperStore = defineStore('shopper', {
     async setPhoto(file: File, merchantId: string, category?: TryOnCategory) {
       this.ensureSession()
       this.uploading = true
+      const previous = { id:this.imageId, path:this.imageStoragePath }
       try {
         this.photoAssessment = await assessPhoto(file, category)
         this.consentAt = new Date().toISOString()
@@ -91,13 +102,36 @@ export const useShopperStore = defineStore('shopper', {
         this.imageId = result.id
         this.imageUrl = result.url
         this.imageStoragePath = result.storagePath
+        localStorage.setItem(BASE_PHOTO_KEY, JSON.stringify({ merchantId, imageId:result.id }))
+        if (previous.id && previous.path && previous.path !== 'demo/local' && previous.id !== result.id) {
+          void deleteShopperImage(previous.id, previous.path, merchantId).catch((error) => console.warn('[Mirror base photo] Could not remove replaced photo.', error))
+        }
       } finally { this.uploading = false }
+    },
+    async restoreBasePhoto(merchantId: string) {
+      if (this.imageUrl || this.restoringPhoto) return Boolean(this.imageUrl)
+      const saved = savedBasePhoto(merchantId)
+      if (!saved) return false
+      this.ensureSession()
+      this.restoringPhoto = true
+      try {
+        const image = await getBasePhotoUrl(merchantId, saved.imageId)
+        this.imageId = image.id
+        this.imageUrl = image.signedUrl
+        this.imageStoragePath = image.storagePath
+        this.consentAt = image.consentAt
+        return true
+      } catch {
+        localStorage.removeItem(BASE_PHOTO_KEY)
+        return false
+      } finally { this.restoringPhoto = false }
     },
     async clearPhoto(merchantId?: string) {
       const oldUrl = this.imageUrl, oldId = this.imageId, oldPath = this.imageStoragePath
       if (oldId && oldPath && oldPath !== 'demo/local') await deleteShopperImage(oldId, oldPath, merchantId)
       if (oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl)
       this.imageId = ''; this.imageUrl = ''; this.imageStoragePath = ''; this.consentAt = ''
+      localStorage.removeItem(BASE_PHOTO_KEY)
       this.photoAssessment = null
     },
     resetLocal() {

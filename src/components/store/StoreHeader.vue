@@ -9,6 +9,7 @@ import type { Merchant } from '@/types'
 const props = defineProps<{ merchant: Merchant }>()
 const cfg = computed(() => props.merchant.storefront_config || {})
 const home = computed(() => storefrontPath(props.merchant, '/'))
+const photoSettings = computed(() => storefrontPath(props.merchant, '/settings/photo'))
 const router = useRouter()
 const user = ref<User | null>(null)
 const role = ref<AppRole | null>(null)
@@ -52,6 +53,7 @@ onBeforeUnmount(() => authSubscription.data.subscription.unsubscribe())
           <div v-if="menuOpen" class="absolute right-0 mt-2 w-64 rounded-2xl border border-line bg-white p-2 text-ink shadow-xl">
             <div class="border-b border-line px-3 py-2"><p class="truncate text-xs font-semibold">{{ user.email }}</p><p class="mt-1 text-[10px] uppercase tracking-wider text-muted">{{ role === 'admin' ? 'Admin' : 'Shopper' }}</p></div>
             <RouterLink v-if="role==='admin'" to="/dashboard" class="mt-1 block rounded-xl px-3 py-2 text-xs font-medium hover:bg-paper" @click="menuOpen=false">Admin dashboard</RouterLink>
+            <RouterLink :to="photoSettings" class="mt-1 block rounded-xl px-3 py-2 text-xs font-medium hover:bg-paper" @click="menuOpen=false">Photo settings</RouterLink>
             <button class="mt-1 w-full rounded-xl px-3 py-2 text-left text-xs font-medium hover:bg-paper" @click="logout">Sign out</button>
           </div>
         </div>

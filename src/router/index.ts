@@ -8,9 +8,11 @@ const router = createRouter({
     { path:'/', component:LandingView },
     { path:'/store/:slug', component:() => import('@/views/store/StoreHomeView.vue') },
     { path:'/store/:slug/product/:productId', component:() => import('@/views/store/ProductDetailView.vue') },
+    { path:'/store/:slug/settings/photo', component:() => import('@/views/store/ShopperPhotoSettingsView.vue'), meta:{ requiresAuth:true } },
     { path:'/store/:slug/try-on/:generationId', component:() => import('@/views/TryOnView.vue'), meta:{ requiresAuth:true } },
     // Clean white-label routes used when the same app is mounted on a merchant custom domain.
     { path:'/product/:productId', component:() => import('@/views/store/ProductDetailView.vue') },
+    { path:'/settings/photo', component:() => import('@/views/store/ShopperPhotoSettingsView.vue'), meta:{ requiresAuth:true } },
     { path:'/try-on/:generationId', component:() => import('@/views/TryOnView.vue'), meta:{ requiresAuth:true } },
     { path:'/privacy', component:() => import('@/views/PrivacyView.vue') },
     { path:'/auth', component:() => import('@/views/AuthView.vue') },

@@ -119,6 +119,7 @@ All shopper-sensitive operations require both the Supabase user JWT and fitting-
 
 - `upload-shopper-image`
 - `delete-shopper-image`
+- `get-base-photo-url`
 - `generate-try-on`
 - `get-saved-look-urls`
 - `chat-with-mirror`
@@ -148,6 +149,7 @@ Example:
 ```bash
 supabase functions deploy upload-shopper-image
 supabase functions deploy delete-shopper-image
+supabase functions deploy get-base-photo-url
 supabase functions deploy generate-try-on
 supabase functions deploy get-saved-look-urls
 supabase functions deploy chat-with-mirror
