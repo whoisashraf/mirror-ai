@@ -271,3 +271,17 @@ VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 
 Do **not** put `OPENROUTER_API_KEY` in the Vue app.
 That secret belongs only in Supabase Edge Function secrets.
+
+## Render frontend deployment
+
+The frontend is defined as a Render Static Site in `render.yaml`. Connect the
+repository as a Render Blueprint and provide the two `VITE_SUPABASE_*` values
+when prompted. The Blueprint includes the Vue Router SPA rewrite, immutable
+caching for hashed assets, and security headers.
+
+After Render assigns the production URL:
+
+1. Set that URL as the Supabase Auth Site URL and add `<url>/auth` to the
+   allowed redirect URLs.
+2. Set the Supabase Edge Function `SITE_URL` secret to the same origin.
+3. Replace demo `example.com` product checkout URLs before a retailer launch.
