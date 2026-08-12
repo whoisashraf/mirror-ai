@@ -18,7 +18,7 @@ export const useChatStore = defineStore('chat', {
   state: () => ({ conversationId: '' as string, messages: [] as ChatMessage[], sending: false, error: '' }),
   actions: {
     reset() { this.conversationId = ''; this.messages = []; this.sending = false; this.error = '' },
-    async send(params: { merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; currentProductIds?: string[]; stylePreference: StylePreference }) {
+    async send(params: { merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; shopperImageId?: string; currentProductIds?: string[]; stylePreference: StylePreference }) {
       if (!params.message.trim() || this.sending) return
       const userMessage: ChatMessage = { id: crypto.randomUUID(), role:'user', content:params.message.trim(), createdAt:new Date().toISOString() }
       this.messages.push(userMessage)

@@ -88,12 +88,14 @@ export const useShopperStore = defineStore('shopper', {
       const previous = localStorage.getItem(ACCOUNT_KEY)
       if (previous === userId) return false
       localStorage.removeItem(BASE_PHOTO_KEY)
+      localStorage.removeItem(STYLE_KEY)
       clearShopperSession()
       this.imageId = ''
       this.imageUrl = ''
       this.imageStoragePath = ''
       this.consentAt = ''
       this.photoAssessment = null
+      this.stylePreference = ''
       this.sessionId = ''
       this.sessionToken = ''
       if (userId) localStorage.setItem(ACCOUNT_KEY, userId)

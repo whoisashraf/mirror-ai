@@ -140,7 +140,7 @@ export async function getSavedLookUrls(merchantId: string, generationIds: string
   return data.urls
 }
 
-export async function chatWithMirror(params: { conversationId?: string; merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; currentProductIds?: string[]; stylePreference: StylePreference }): Promise<{ conversationId: string; reply: MirrorReply }> {
+export async function chatWithMirror(params: { conversationId?: string; merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; shopperImageId?: string; currentProductIds?: string[]; stylePreference: StylePreference }): Promise<{ conversationId: string; reply: MirrorReply }> {
   return invokeShopperFunction('chat-with-mirror', params, true)
 }
 

@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useShopperStore } from '@/stores/shopper'
 import RecommendationCard from './RecommendationCard.vue'
-import type { MirrorAction } from '@/types'
+import type { MirrorAction, StylePreference } from '@/types'
 
 const props = defineProps<{
   merchantId: string
@@ -35,6 +35,7 @@ const visibleMessages = computed(() => chat.messages.filter((message, index, mes
 }))
 const latestRecommendationMessageId = computed(() => [...visibleMessages.value].reverse().find((message) => message.role === 'assistant' && message.recommendations?.length)?.id)
 const selectionLimit = computed(() => Math.max(0, 5 - new Set(props.currentProductIds || []).size))
+const selectedCollection = computed(() => shopper.stylePreference || 'any')
 
 watch(latestRecommendationMessageId, () => { selectedRecommendationIds.value = [] })
 
@@ -55,10 +56,17 @@ async function send(text?: string) {
     message,
     selectedProductId:props.productId,
     generationId:props.generationId,
+    shopperImageId:shopper.imageId || undefined,
     currentProductIds:props.currentProductIds,
     stylePreference: shopper.stylePreference || 'any',
   })
   await scrollToEnd()
+}
+
+function changeCollection(event: Event) {
+  const value = (event.target as HTMLSelectElement).value as StylePreference
+  shopper.setStylePreference(value)
+  chat.reset()
 }
 
 function toggleRecommendation(productId: string) {
@@ -94,7 +102,7 @@ function actionLabel(action: string | MirrorAction) {
 <template>
   <section class="flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-line bg-white h-full">
     <div class="shrink-0 border-b border-line px-4 py-3">
-      <div class="flex items-center gap-3"><div class="grid h-9 w-9 place-items-center rounded-full bg-[var(--store-accent)] text-xs font-bold text-white">{{ name.slice(0,1).toUpperCase() }}</div><div><h2 class="text-sm font-semibold">{{ name }}</h2><p class="text-xs text-muted">Styling advice from this store’s catalogue</p></div></div>
+      <div class="flex items-center justify-between gap-3"><div class="flex min-w-0 items-center gap-3"><div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--store-accent)] text-xs font-bold text-white">{{ name.slice(0,1).toUpperCase() }}</div><div class="min-w-0"><h2 class="text-sm font-semibold">{{ name }}</h2><p class="truncate text-xs text-muted">Visual styling from this store’s catalogue</p></div></div><label class="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted">Collection<select :value="selectedCollection" class="mt-1 block min-h-9 rounded-lg border border-line bg-white px-2 text-[10px] font-semibold capitalize text-ink" @change="changeCollection"><option value="womenswear">Womenswear</option><option value="menswear">Menswear</option><option value="any">Any</option></select></label></div>
     </div>
     <div ref="scroller" class="min-h-52 flex-1 space-y-4 overflow-y-auto p-4">
       <div v-if="!chat.messages.length"><p class="text-sm leading-6 text-muted">Ask about colour, occasion, styling, modest options or a budget. Your current generated look stays visible while the conversation changes it.</p><div class="mt-4 flex flex-wrap gap-2"><button v-for="p in prompts" :key="p" class="focus-ring rounded-full border border-line px-3 py-2 text-left text-xs hover:border-ink" @click="send(p)">{{ p }}</button></div></div>
