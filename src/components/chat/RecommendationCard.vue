@@ -5,8 +5,8 @@ import { getProduct, trackEvent } from '@/lib/api'
 import { customTenantHost } from '@/lib/tenant'
 import type { Product } from '@/types'
 
-const props = defineProps<{ productId: string; reason: string; slug: string; merchantId: string; sessionId: string; currentProductIds?: string[] }>()
-const emit = defineEmits<{ add: [productId: string] }>()
+const props = defineProps<{ productId: string; reason: string; slug: string; merchantId: string; sessionId: string; currentProductIds?: string[]; selected?: boolean; selectionDisabled?: boolean }>()
+const emit = defineEmits<{ toggle: [productId: string] }>()
 const product = ref<Product | null>(null)
 const href = computed(() => customTenantHost() ? `/product/${props.productId}` : `/store/${props.slug}/product/${props.productId}`)
 const alreadyInLook = computed(() => props.currentProductIds?.includes(props.productId) ?? false)
@@ -14,10 +14,10 @@ onMounted(async () => { product.value = await getProduct(props.productId) })
 async function record(action: string) {
   await trackEvent('recommendation_clicked', { merchantId:props.merchantId, sessionId:props.sessionId, productId:props.productId, metadata:{action} })
 }
-async function add() {
+async function toggle() {
   if (alreadyInLook.value) return
-  await record('add_to_look')
-  emit('add', props.productId)
+  await record(props.selected ? 'remove_from_selection' : 'select_for_look')
+  emit('toggle', props.productId)
 }
 </script>
 <template>
@@ -26,7 +26,7 @@ async function add() {
     <div class="min-w-0 flex flex-1 flex-col py-1">
       <div><p class="truncate text-xs font-semibold">{{ product.name }}</p><p class="mt-0.5 text-[11px] font-medium">{{ formatMoney(product.price, product.currency) }}</p><p class="mt-1 line-clamp-2 text-[10px] leading-4 text-muted">{{ reason }}</p></div>
       <div class="mt-auto flex gap-2 pt-2">
-        <button class="focus-ring min-h-8 flex-1 rounded-full bg-ink px-2 text-[9px] font-semibold text-white disabled:bg-line disabled:text-muted" :disabled="alreadyInLook" @click="add">{{ alreadyInLook ? 'In look ✓' : 'Add' }}</button>
+        <button class="focus-ring min-h-8 flex-1 rounded-full px-2 text-[9px] font-semibold disabled:bg-line disabled:text-muted" :class="selected ? 'bg-[var(--store-accent)] text-white' : 'bg-ink text-white'" :disabled="alreadyInLook || (selectionDisabled && !selected)" @click="toggle">{{ alreadyInLook ? 'In look ✓' : selected ? 'Selected ✓' : selectionDisabled ? 'Look full' : 'Select' }}</button>
         <RouterLink :to="href" class="focus-ring grid min-h-8 place-items-center rounded-full border border-line px-2 text-[9px] font-semibold" @click="record('view_product')">View</RouterLink>
       </div>
     </div>

@@ -6,7 +6,7 @@ import CurrentLookBar from '@/components/tryon/CurrentLookBar.vue'
 import ShopThisLook from '@/components/tryon/ShopThisLook.vue'
 import MirrorChat from '@/components/chat/MirrorChat.vue'
 import AppButton from '@/components/ui/AppButton.vue'
-import { getProduct, resolveMerchant, trackEvent } from '@/lib/api'
+import { getProduct, getSavedLookUrls, resolveMerchant, trackEvent } from '@/lib/api'
 import { activateTenantScope, applyStorefrontTheme, customTenantHost, storefrontPath, tenantSlugFromRoute } from '@/lib/tenant'
 import { useShopperStore } from '@/stores/shopper'
 import { useTryOnStore } from '@/stores/tryOn'
@@ -51,7 +51,6 @@ watch(() => tryOn.current?.id, (id) => {
 })
 
 onMounted(async () => {
-  savedLooks.value = loadSavedLooks()
   shopper.ensureSession()
   merchant.value = await resolveMerchant(tenantSlugFromRoute(route.params.slug), customTenantHost())
   const pid = route.query.product as string
@@ -59,6 +58,7 @@ onMounted(async () => {
   if (merchant.value) {
     if (activateTenantScope(merchant.value.id)) { chat.reset(); tryOn.reset(); await shopper.clearPhoto().catch(() => undefined); shopper.rotateSession() }
     applyStorefrontTheme(merchant.value)
+    await refreshSavedLooks()
   }
   if (!tryOn.current && !shopper.imageUrl) error.value = 'This try-on photo is no longer available in this browser session.'
   if (!tryOn.current && product.value && merchant.value && shopper.imageUrl) {
@@ -88,7 +88,18 @@ async function generate(ids: string[], mode: 'single' | 'complete_look' = 'compl
 }
 
 async function completeLook(ids:string[]) {
-  await generate([...currentProductIds.value, ...ids], 'complete_look')
+  const uniqueIds = [...new Set([...currentProductIds.value, ...ids])]
+  const candidates = (await Promise.all(uniqueIds.map((id) => getProduct(id))))
+    .filter((item): item is Product => Boolean(item && item.merchant_id === merchant.value?.id))
+  let selected: Product[] = []
+  for (const candidate of candidates) {
+    const category = candidate.try_on_category
+    if (category === 'dress') selected = selected.filter((item) => !['dress','top','bottom'].includes(item.try_on_category || ''))
+    if (category === 'top' || category === 'bottom') selected = selected.filter((item) => item.try_on_category !== 'dress')
+    if (category && exclusiveCategories.has(category)) selected = selected.filter((item) => item.try_on_category !== category)
+    selected.push(candidate)
+  }
+  await generate(selected.slice(0, 5).map((item) => item.id), 'complete_look')
 }
 
 function normalizedIdsForAdd(candidate: Product, targetProductId?: string) {
@@ -130,12 +141,24 @@ function saveLook() {
   if (!tryOn.current) return
   persistLook(tryOn.current, currentProductIds.value)
   saved.value = true
-  savedLooks.value = loadSavedLooks()
+  void refreshSavedLooks()
+}
+
+async function refreshSavedLooks() {
+  const items = loadSavedLooks().filter((look) => look.merchantId === merchant.value?.id)
+  savedLooks.value = items
+  if (!merchant.value || !items.length) return
+  try {
+    const urls = await getSavedLookUrls(merchant.value.id, items.map((look) => look.generationId))
+    savedLooks.value = items.map((look) => ({ ...look, imageUrl: urls[look.generationId] || look.imageUrl }))
+  } catch (e) {
+    console.warn('[Mirror saved looks] Could not refresh image links.', e)
+  }
 }
 
 function deleteSavedLook(generationId: string) {
   removeSavedLook(generationId)
-  savedLooks.value = loadSavedLooks()
+  savedLooks.value = savedLooks.value.filter((look) => look.generationId !== generationId)
   saved.value = Boolean(tryOn.current?.id && isLookSaved(tryOn.current.id))
 }
 
@@ -157,7 +180,7 @@ async function buyProduct(item: Product) {
           <div class="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-line px-3 sm:px-4">
             <div class="min-w-0"><p class="text-[9px] font-semibold uppercase tracking-[.18em] text-muted">Live fitting room</p><p class="mt-0.5 max-w-52 truncate text-xs font-semibold xl:max-w-xs">{{ lookProducts.map((p)=>p.name).join(' + ') || product?.name || 'Your outfit' }}</p></div>
             <div class="flex shrink-0 items-center gap-1 whitespace-nowrap">
-              <button class="focus-ring min-h-9 rounded-full px-2.5 text-[10px] font-semibold hover:bg-paper" @click="showSaved=true">My looks<span v-if="savedLooks.length"> · {{ savedLooks.length }}</span></button>
+              <button class="focus-ring min-h-9 rounded-full px-2.5 text-[10px] font-semibold hover:bg-paper" @click="showSaved=true; refreshSavedLooks()">My looks<span v-if="savedLooks.length"> · {{ savedLooks.length }}</span></button>
               <button v-if="status==='completed'" class="focus-ring min-h-9 rounded-full px-2.5 text-[10px] font-semibold hover:bg-paper" @click="saveLook">{{ saved?'Saved ✓':'Save' }}</button>
               <button v-if="status==='completed'" class="focus-ring min-h-9 rounded-full px-2.5 text-[10px] font-semibold hover:bg-paper" :disabled="busy" @click="regenerate">Retry</button>
               <button v-if="status==='completed' && lookProducts.length" class="focus-ring min-h-9 rounded-full bg-[var(--store-accent)] px-3 text-[10px] font-semibold text-white" @click="showShop=true">Shop</button>

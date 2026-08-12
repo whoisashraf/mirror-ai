@@ -123,6 +123,15 @@ export async function createTryOn(params: { merchantId: string; sessionId: strin
   return data.generation
 }
 
+export async function getSavedLookUrls(merchantId: string, generationIds: string[]): Promise<Record<string, string>> {
+  if (!generationIds.length) return {}
+  const data = await invokeShopperFunction<{ urls: Record<string, string> }>('get-saved-look-urls', {
+    merchantId,
+    generationIds: [...new Set(generationIds)].slice(0, 20),
+  }, true)
+  return data.urls
+}
+
 export async function chatWithMirror(params: { conversationId?: string; merchantId: string; sessionId: string; message: string; selectedProductId?: string; generationId?: string; currentProductIds?: string[]; stylePreference: StylePreference }): Promise<{ conversationId: string; reply: MirrorReply }> {
   return invokeShopperFunction('chat-with-mirror', params, true)
 }

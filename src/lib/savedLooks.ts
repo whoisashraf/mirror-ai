@@ -7,6 +7,7 @@ export interface SavedLook {
   merchantId: string
   productIds: string[]
   imageUrl?: string
+  storagePath?: string
   createdAt: string
 }
 
@@ -35,6 +36,7 @@ export function saveLook(generation: TryOnGeneration, productIds: string[]) {
     merchantId: generation.merchant_id,
     productIds: [...new Set(productIds)],
     imageUrl: generation.output_image_url,
+    storagePath: generation.output_storage_path,
     createdAt: new Date().toISOString(),
   }
   const items = loadSavedLooks().filter((item) => item.generationId !== saved.generationId)

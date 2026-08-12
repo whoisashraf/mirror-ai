@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useShopperStore } from '@/stores/shopper'
 import RecommendationCard from './RecommendationCard.vue'
@@ -24,6 +24,7 @@ const emit = defineEmits<{
 const chat = useChatStore()
 const shopper = useShopperStore()
 const input = ref('')
+const selectedRecommendationIds = ref<string[]>([])
 const scroller = ref<HTMLElement | null>(null)
 const name = computed(() => props.assistantName || 'Mirror')
 const prompts = ['Does this colour suit me?', 'Is this interview appropriate?', 'What can I pair with this?', 'Make this more casual.', 'Build a complete outfit around this.']
@@ -33,6 +34,9 @@ const visibleMessages = computed(() => chat.messages.filter((message, index, mes
   return !previous || previous.role !== message.role || previous.content !== message.content
 }))
 const latestRecommendationMessageId = computed(() => [...visibleMessages.value].reverse().find((message) => message.role === 'assistant' && message.recommendations?.length)?.id)
+const selectionLimit = computed(() => Math.max(0, 5 - new Set(props.currentProductIds || []).size))
+
+watch(latestRecommendationMessageId, () => { selectedRecommendationIds.value = [] })
 
 async function scrollToEnd() {
   await nextTick()
@@ -57,9 +61,17 @@ async function send(text?: string) {
   await scrollToEnd()
 }
 
-function completeLook() {
-  const ids = [props.productId, ...(props.currentProductIds || []), ...latestRecommendations.value.slice(0, 3).map((r) => r.productId)].filter(Boolean) as string[]
+function toggleRecommendation(productId: string) {
+  if (!selectedRecommendationIds.value.includes(productId) && selectedRecommendationIds.value.length >= selectionLimit.value) return
+  selectedRecommendationIds.value = selectedRecommendationIds.value.includes(productId)
+    ? selectedRecommendationIds.value.filter((id) => id !== productId)
+    : [...selectedRecommendationIds.value, productId]
+}
+
+function completeLook(productIds = latestRecommendations.value.slice(0, 3).map((r) => r.productId)) {
+  const ids = [props.productId, ...(props.currentProductIds || []), ...productIds].filter(Boolean) as string[]
   emit('tryCompleteLook', [...new Set(ids)])
+  selectedRecommendationIds.value = []
 }
 
 function executeAction(action: string | MirrorAction) {
@@ -98,8 +110,14 @@ function actionLabel(action: string | MirrorAction) {
             :merchant-id="merchantId"
             :session-id="shopper.sessionId"
             :current-product-ids="currentProductIds"
-            @add="emit('addToLook', $event)"
+            :selected="selectedRecommendationIds.includes(rec.productId)"
+            :selection-disabled="selectedRecommendationIds.length >= selectionLimit"
+            @toggle="toggleRecommendation"
           />
+          <div v-if="selectedRecommendationIds.length" class="col-span-full sticky bottom-0 rounded-xl border border-line bg-white/95 p-2 shadow-lg backdrop-blur">
+            <button class="focus-ring min-h-11 w-full rounded-full bg-[var(--store-accent)] px-4 text-xs font-semibold text-white" @click="completeLook(selectedRecommendationIds)">Generate complete look · {{ selectedRecommendationIds.length }} selected</button>
+            <p class="mt-1.5 text-center text-[9px] text-muted">All selected pieces will be generated together once.</p>
+          </div>
         </div>
         <div v-if="message.role==='assistant' && !message.recommendations?.length && message.suggestedActions?.length" class="flex flex-wrap gap-2">
           <button v-for="(action,index) in message.suggestedActions" :key="`${message.id}-${index}`" class="focus-ring min-h-10 rounded-full border border-[var(--store-accent)] px-3 text-[11px] font-semibold text-[var(--store-accent)]" @click="executeAction(action)">{{ actionLabel(action) }}</button>
