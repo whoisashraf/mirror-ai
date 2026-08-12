@@ -7,7 +7,8 @@ import AppButton from '@/components/ui/AppButton.vue'
 import type { TryOnCategory } from '@/types'
 import { initializeAuth } from '@/lib/auth'
 
-const props = defineProps<{ merchantId?: string; productId?: string; tryOnCategory?: TryOnCategory }>()
+const props = defineProps<{ merchantId?: string; productId?: string; tryOnCategory?: TryOnCategory; continueLabel?: string }>()
+const emit = defineEmits<{ continue: [] }>()
 const shopper = useShopperStore()
 const route = useRoute()
 const router = useRouter()
@@ -42,6 +43,11 @@ async function handleFile(file?: File) {
 <template>
   <section class="rounded-[1.5rem] border border-line bg-white p-4 sm:p-5">
     <div v-if="shopper.imageUrl" class="space-y-4">
+      <div v-if="continueLabel" class="rounded-[1.2rem] bg-ink p-4 text-white">
+        <p class="text-xs font-semibold uppercase tracking-[.16em] text-white/55">Photo ready</p>
+        <p class="mt-1 text-sm leading-6 text-white/75">Your photo is saved. Continue to generate your try-on.</p>
+        <AppButton class="mt-3 w-full !bg-white !text-ink hover:!bg-cream" @click="emit('continue')">{{ continueLabel }} →</AppButton>
+      </div>
       <div class="overflow-hidden rounded-[1.2rem] bg-cream"><img :src="shopper.imageUrl" alt="Your uploaded try-on photo" class="max-h-[58vh] w-full object-contain" /></div>
       <div v-if="shopper.photoAssessment" class="rounded-[1.1rem] border border-line bg-paper p-3">
         <div class="flex items-center justify-between gap-3"><p class="text-xs font-semibold">Photo preflight</p><span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold">{{ shopper.photoAssessment.score }}%</span></div>

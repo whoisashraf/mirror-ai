@@ -166,11 +166,19 @@ export interface ProductInsight {
 
 export interface AnalyticsSummary {
   productCount: number
+  shopperSessions: number
   tryOns: number
   conversations: number
+  recommendationShown: number
   recommendationClicks: number
   checkoutClicks: number
-  funnel: Array<{ label: string; value: number }>
+  tryOnCompletionRate: number
+  recommendationClickRate: number
+  checkoutRate: number
+  funnel: Array<{ label: string; value: number; conversionFromPrevious: number | null }>
   shopperIntents?: IntentInsight[]
   topProducts?: ProductInsight[]
+  dailyActivity: Array<{ date: string; sessions: number; tryOns: number; checkoutClicks: number }>
+  period: { days: number; since: string; until: string }
+  generatedAt: string
 }

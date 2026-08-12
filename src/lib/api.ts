@@ -174,8 +174,8 @@ export async function updateMerchant(merchant: Merchant) {
   const { data, error } = await supabase.from('merchants').update({ name: merchant.name, slug: merchant.slug, description: merchant.description, website_url: merchant.website_url, custom_domain: merchant.custom_domain || null, currency: merchant.currency, primary_brand_colour: merchant.primary_brand_colour, storefront_config: merchant.storefront_config || {} }).eq('id', merchant.id).select('*').single(); if (error) throw error; return data as Merchant
 }
 
-export async function getAnalytics(merchantId: string): Promise<AnalyticsSummary> {
-  const { data, error } = await supabase.functions.invoke('merchant-analytics', { body: { merchantId } })
+export async function getAnalytics(merchantId: string, days = 30): Promise<AnalyticsSummary> {
+  const { data, error } = await supabase.functions.invoke('merchant-analytics', { body: { merchantId, days } })
   if (error) throw error
   return data as AnalyticsSummary
 }

@@ -18,6 +18,6 @@ const total = computed(() => props.products.reduce((sum, product) => sum + Numbe
         <button class="focus-ring min-h-10 rounded-full border border-line px-3 text-[11px] font-semibold hover:border-ink" @click="emit('buy', product)">Buy ↗</button>
       </div>
     </div>
-    <p class="mt-4 text-[10px] leading-4 text-muted">Mirror opens the merchant’s product pages. The MVP does not claim a synchronized multi-item cart.</p>
+    <p class="mt-4 text-[10px] leading-4 text-muted">Mirror keeps every recommendation connected to this retailer. Product links open the store’s own checkout flow.</p>
   </section>
 </template>
